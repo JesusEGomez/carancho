@@ -1,19 +1,86 @@
+@import url("https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --color-brand-orange: #f05a19;
-  --color-brand-yellow: #f2c500;
-  --color-brand-ink: #0f172a;
-  --color-brand-cream: #fff8ee;
-  --color-brand-panel: #111b31;
-  --color-brand-border: #e9edf5;
-  --font-sans: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
-  --font-display: "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", sans-serif;
+  --color-brand-orange: #f06119;
+  --color-brand-yellow: #ffb14a;
+  --color-brand-ink: #1c1c1c;
+  --color-brand-cream: #f9f7f6;
+  --color-brand-panel: #1c1c1c;
+  --color-brand-border: #ece7df;
+  --font-sans: "Lexend", "Segoe UI", sans-serif;
+  --font-display: "Lexend", "Segoe UI", sans-serif;
 }
 
 @layer base {
+  :root {
+    --background: 30 20% 97%;
+    --foreground: 0 0% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 11%;
+    --primary: 20 88% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 20% 94%;
+    --secondary-foreground: 0 0% 11%;
+    --muted: 30 10% 94%;
+    --muted-foreground: 220 5% 40%;
+    --accent: 20 88% 52%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 15% 88%;
+    --input: 30 15% 88%;
+    --ring: 20 88% 52%;
+    --radius: 0.5rem;
+    --success: 142 71% 35%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 10% 30%;
+    --sidebar-primary: 20 88% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 20 88% 96%;
+    --sidebar-accent-foreground: 20 88% 42%;
+    --sidebar-border: 30 15% 90%;
+    --sidebar-ring: 20 88% 52%;
+  }
+
+  .dark {
+    --background: 20 30% 6%;
+    --foreground: 30 20% 95%;
+    --card: 20 20% 10%;
+    --card-foreground: 30 20% 95%;
+    --popover: 20 20% 10%;
+    --popover-foreground: 30 20% 95%;
+    --primary: 20 88% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 15% 15%;
+    --secondary-foreground: 30 20% 95%;
+    --muted: 20 15% 15%;
+    --muted-foreground: 30 10% 60%;
+    --accent: 20 15% 15%;
+    --accent-foreground: 30 20% 95%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 20 15% 18%;
+    --input: 20 15% 18%;
+    --ring: 20 88% 52%;
+    --sidebar-background: 20 20% 8%;
+    --sidebar-foreground: 30 20% 90%;
+    --sidebar-primary: 20 88% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 20 15% 14%;
+    --sidebar-accent-foreground: 30 20% 90%;
+    --sidebar-border: 20 15% 15%;
+    --sidebar-ring: 20 88% 52%;
+  }
+
   * {
     box-sizing: border-box;
+    border-color: hsl(var(--border));
   }
 
   html {
@@ -21,8 +88,17 @@
   }
 
   body {
-    @apply bg-white text-slate-900 antialiased;
-    background-image: radial-gradient(circle at top, rgba(242, 197, 0, 0.08), transparent 28%);
+    @apply font-sans antialiased;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    background-image: radial-gradient(circle at top, rgba(240, 97, 25, 0.06), transparent 28%);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-bold tracking-tight;
   }
 
   a {
@@ -40,14 +116,18 @@
   }
 
   .surface-card {
-    @apply rounded-[28px] border border-slate-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.08)];
+    @apply rounded-[28px] border border-brand-border bg-white shadow-[0_12px_32px_rgba(28,28,28,0.06)];
   }
 
   .orange-button {
-    @apply rounded-[16px] bg-brand-orange px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-orange-600;
+    @apply rounded-[12px] bg-brand-orange px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:brightness-95;
   }
 
   .pill-badge {
     @apply rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em];
+  }
+
+  .btn-press {
+    @apply transition-all active:translate-y-[1px] active:shadow-none;
   }
 }

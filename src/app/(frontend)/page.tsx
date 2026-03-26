@@ -1,9 +1,10 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
+import { CategoryCard } from '@/components/store/CategoryCard'
 import { StoreFooter } from '@/components/store/StoreFooter'
+import { HeroCarousel } from '@/components/store/HeroCarousel'
 import { StoreHeader } from '@/components/store/StoreHeader'
-import { StoreMedia } from '@/components/store/StoreMedia'
 import { ProductCard } from '@/components/store/ProductCard'
 import { getFeaturedCategories, getFeaturedProducts } from '@/lib/store'
 
@@ -11,39 +12,13 @@ export default async function HomePage() {
   const [categories, products] = await Promise.all([getFeaturedCategories(), getFeaturedProducts(4)])
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-brand-cream">
       <StoreHeader />
 
-      <section className="relative isolate overflow-hidden bg-brand-panel">
-        <Image
-          alt="Paisaje de montaña con río y pescador para el hero de Carancho"
-          className="object-cover object-center"
-          fill
-          priority
-          sizes="100vw"
-          src="/images/heroes/carancho-home-hero.png"
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.44)_0%,rgba(15,23,42,0.36)_35%,rgba(15,23,42,0.62)_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,23,42,0.26)_0%,rgba(15,23,42,0.08)_34%,rgba(15,23,42,0.18)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12),transparent_58%)]" />
-        <div className="container-shell relative py-20 text-center sm:py-24">
-          <div className="mx-auto max-w-4xl">
-            <h1 className="text-4xl font-black leading-tight text-white drop-shadow-[0_10px_28px_rgba(15,23,42,0.42)] sm:text-6xl">
-              Todo para tu <span className="text-brand-yellow">aventura</span>
-              <br />y tu <span className="text-brand-yellow">hogar</span>
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-white/88 drop-shadow-[0_6px_18px_rgba(15,23,42,0.35)] sm:text-lg">
-              Equipamiento de alta calidad para pescadores apasionados y el confort de tu casa.
-            </p>
-            <Link className="mt-8 inline-flex rounded-[14px] bg-brand-orange px-8 py-4 text-sm font-black uppercase tracking-[0.14em] text-white shadow-[0_16px_30px_rgba(240,90,25,0.28)]" href="/productos">
-              Ver productos
-            </Link>
-          </div>
-        </div>
-      </section>
+      <HeroCarousel />
 
-      <section className="bg-brand-yellow">
-        <div className="container-shell grid gap-4 py-4 text-center text-[11px] font-black uppercase tracking-[0.18em] text-brand-ink sm:grid-cols-3">
+      <section className="bg-brand-orange">
+        <div className="container-shell grid gap-4 py-4 text-center text-[11px] font-black uppercase tracking-[0.18em] text-white sm:grid-cols-3">
           <p>Envío gratis</p>
           <p>Garantía oficial</p>
           <p>Pago seguro</p>
@@ -52,30 +27,12 @@ export default async function HomePage() {
 
       <section id="categorias" className="py-16 sm:py-20">
         <div className="container-shell">
-          <h2 className="text-center text-[30px] font-black uppercase tracking-tight text-brand-ink sm:text-[34px]">
+          <h2 className="mb-8 text-center text-2xl font-extrabold uppercase tracking-wider text-brand-ink">
             Categorías destacadas
           </h2>
-          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
             {categories.map((category) => (
-              <Link
-                key={category.id}
-                className="group relative overflow-hidden rounded-[24px] shadow-[0_20px_40px_rgba(15,23,42,0.12)]"
-                href={`/productos?categoria=${category.slug}`}
-              >
-                <StoreMedia
-                  alt={category.heroImage?.alt ?? category.name}
-                  className="min-h-[260px] w-full object-cover"
-                  fallbackLabel={category.name}
-                  src={category.heroImage?.url}
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_10%,rgba(15,23,42,0.82)_100%)]" />
-                <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-                  <div className="flex items-center gap-3">
-                    <span className="h-5 w-1 rounded-full bg-brand-orange" />
-                    <h3 className="text-lg font-black uppercase tracking-[0.08em]">{category.name}</h3>
-                  </div>
-                </div>
-              </Link>
+              <CategoryCard key={category.id} category={category} />
             ))}
           </div>
         </div>
@@ -106,18 +63,34 @@ export default async function HomePage() {
           </p>
           <form className="mx-auto mt-8 flex max-w-2xl flex-col gap-3 sm:flex-row">
             <input
-              className="h-12 flex-1 rounded-full border border-white/10 bg-white px-5 text-sm text-brand-ink outline-none"
+              className="h-12 flex-1 rounded-[8px] border border-white/10 bg-[#2a2a2a] px-5 text-sm text-white outline-none placeholder:text-slate-500"
               placeholder="Tu correo electrónico"
               type="email"
             />
-            <button className="h-12 rounded-[14px] bg-brand-yellow px-7 text-sm font-black uppercase tracking-[0.12em] text-brand-ink">
+            <button className="h-12 rounded-[8px] bg-brand-orange px-7 text-sm font-black uppercase tracking-[0.12em] text-white">
               Suscribirme
             </button>
           </form>
         </div>
       </section>
 
-      <StoreFooter variant="light" />
+      <section className="bg-white py-16 sm:py-20">
+        <div className="container-shell text-center">
+          <h2 className="mb-8 text-2xl font-extrabold uppercase tracking-wider text-brand-ink">
+            Marcas que nos acompañan
+          </h2>
+          <Image
+            alt="Marcas: Alpine Skate, Bewolk, Brogas, Colony, Contigo, Discovery, DMF, Doite, HEAD, Kumoc, Kunnan, Libertad, Makalu, Marine, Mustad, Okuma, Omoto, Payo, Rocker, Shimano, Sox, Spinit, Sportsman, Trento, Waterdog"
+            className="mx-auto h-auto w-full max-w-4xl invert opacity-40"
+            height={546}
+            sizes="(max-width: 768px) 100vw, 896px"
+            src="/images/brands/brands-logos.png"
+            width={1600}
+          />
+        </div>
+      </section>
+
+      <StoreFooter />
     </div>
   )
 }
