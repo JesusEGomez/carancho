@@ -1,0 +1,166 @@
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+
+import { StoreFooter } from '@/components/store/StoreFooter'
+import { StoreHeader } from '@/components/store/StoreHeader'
+import { StoreMedia } from '@/components/store/StoreMedia'
+import { ProductCard } from '@/components/store/ProductCard'
+import { formatCurrency } from '@/lib/formatCurrency'
+import { getProductBySlug } from '@/lib/store'
+import type { Media } from '@/payload-types'
+
+type Props = {
+  params: Promise<{
+    slug: string
+  }>
+}
+
+export default async function ProductDetailPage({ params }: Props) {
+  const { slug } = await params
+  const data = await getProductBySlug(slug)
+
+  if (!data) {
+    notFound()
+  }
+
+  const { product, relatedProducts } = data
+  const gallery = (product.gallery?.length ? product.gallery : [product.featuredImage]) as Media[]
+
+  return (
+    <div className="min-h-screen bg-white">
+      <StoreHeader />
+
+      <div className="container-shell py-8 sm:py-10">
+        <nav className="mb-7 flex items-center gap-3 text-xs font-bold text-slate-400">
+          <Link href="/" className="hover:text-brand-orange">
+            Inicio
+          </Link>
+          <span>/</span>
+          <Link href="/productos" className="hover:text-brand-orange">
+            Pesca
+          </Link>
+          <span>/</span>
+          <span className="text-brand-ink">{product.category.name}</span>
+        </nav>
+
+        <section className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+          <div>
+            <div className="overflow-hidden rounded-[24px] bg-slate-100 shadow-[0_18px_40px_rgba(15,23,42,0.10)]">
+              <StoreMedia
+                alt={product.featuredImage?.alt ?? product.name}
+                className="aspect-[1.22] w-full object-cover"
+                fallbackLabel={product.name}
+                src={product.featuredImage?.url}
+              />
+            </div>
+
+            <div className="mt-4 grid grid-cols-4 gap-4">
+              {gallery.slice(0, 4).map((image, index) => (
+                <div
+                  key={image.id}
+                  className={`overflow-hidden rounded-[18px] border-2 ${index === 0 ? 'border-brand-orange' : 'border-transparent'} bg-slate-100`}
+                >
+                  <StoreMedia
+                    alt={image.alt}
+                    className="aspect-square w-full object-cover"
+                    fallbackLabel={product.category.name}
+                    src={image.url}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <span className="pill-badge bg-emerald-50 text-emerald-600">En stock - envío hoy</span>
+            <h1 className="mt-4 text-4xl font-black leading-tight text-brand-ink sm:text-5xl">{product.name}</h1>
+            <p className="mt-4 max-w-xl text-base leading-7 text-slate-500">{product.shortDescription}</p>
+
+            <div className="mt-6 flex items-end gap-3">
+              <p className="text-4xl font-black text-brand-ink">{formatCurrency(product.price)}</p>
+              {product.compareAtPrice ? (
+                <>
+                  <p className="text-base font-bold text-slate-400 line-through">{formatCurrency(product.compareAtPrice)}</p>
+                  <span className="pill-badge bg-orange-50 text-brand-orange">-20%</span>
+                </>
+              ) : null}
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="inline-flex h-12 items-center rounded-full border border-slate-200 bg-white px-4 text-sm font-black text-brand-ink">
+                −&nbsp;&nbsp;1&nbsp;&nbsp;+
+              </div>
+              <button className="orange-button h-12 min-w-[220px]">Añadir al carrito</button>
+            </div>
+
+            <button className="mt-3 h-12 w-full rounded-full border border-slate-200 text-sm font-black uppercase tracking-[0.12em] text-brand-ink sm:max-w-[220px]">
+              Comprar ahora
+            </button>
+
+            <div className="mt-8 grid gap-4 rounded-[22px] border border-slate-200 bg-white p-5 text-center sm:grid-cols-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-orange">Envío gratis</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-orange">Garantía oficial</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-orange">Pago seguro</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-16 grid gap-10 lg:grid-cols-2">
+          <div>
+            <h2 className="text-3xl font-black text-brand-ink">Descripción del Producto</h2>
+            <p className="mt-5 leading-8 text-slate-600">{product.description}</p>
+
+            <div className="mt-8 rounded-[22px] bg-white p-6 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+              <h3 className="text-lg font-black text-brand-ink">Características Principales</h3>
+              <ul className="mt-5 space-y-3">
+                {product.features?.map((feature) => (
+                  <li key={feature.id} className="flex items-start gap-3 text-sm font-medium text-slate-600">
+                    <span className="mt-2 h-2 w-2 rounded-full bg-emerald-500" />
+                    <span>{feature.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="rounded-[22px] bg-white p-6 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+            <h3 className="text-lg font-black text-brand-ink">Especificaciones Técnicas</h3>
+            <div className="mt-5 divide-y divide-slate-100">
+              {product.specifications?.map((specification) => (
+                <div key={specification.id} className="flex items-center justify-between gap-4 py-4 text-sm">
+                  <span className="font-semibold text-slate-500">{specification.label}</span>
+                  <span className="text-right font-bold text-brand-ink">{specification.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {relatedProducts.length ? (
+          <section className="mt-20">
+            <div className="mb-8 flex items-center justify-between gap-4">
+              <h2 className="text-3xl font-black text-brand-ink">Productos Relacionados</h2>
+              <div className="flex gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-400">‹</span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-400">›</span>
+              </div>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+              {relatedProducts.map((relatedProduct) => (
+                <ProductCard key={relatedProduct.id} product={relatedProduct} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </div>
+
+      <StoreFooter />
+    </div>
+  )
+}

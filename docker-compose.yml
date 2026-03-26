@@ -9,10 +9,10 @@ services:
       - .:/home/node/app
       - node_modules:/home/node/app/node_modules
     working_dir: /home/node/app/
-    command: sh -c "corepack enable && corepack prepare pnpm@latest --activate && pnpm install && pnpm dev"
+    command: sh -c "corepack enable && yarn install && yarn dev"
     depends_on:
       - mongo
-      # - postgres
+      - postgres
     env_file:
       - .env
 
@@ -29,15 +29,19 @@ services:
       driver: none
 
   # Uncomment the following to use postgres
-  # postgres:
-  #   restart: always
-  #   image: postgres:latest
-  #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
+  postgres:
+    restart: always
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: carancho
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - '5433:5432'
 
 volumes:
   data:
-  # pgdata:
+  pgdata:
   node_modules:

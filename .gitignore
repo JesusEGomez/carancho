@@ -48,3 +48,14 @@ node_modules/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# local-only agent and design context
+/.codex/
+/.cursor/
+/AGENTS.md
+/docs/agent-context.md
+
+# local-only visual references and screenshots
+/design/
+/review-*.png
+/carancho-*.png

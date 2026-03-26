@@ -20,12 +20,12 @@ export async function login({
 }: LoginOptions): Promise<void> {
   await page.goto(`${serverURL}/admin/login`)
 
-  await page.fill('#field-email', user.email)
-  await page.fill('#field-password', user.password)
+  await page.fill('input[type="email"]', user.email)
+  await page.fill('input[type="password"]', user.password)
   await page.click('button[type="submit"]')
 
   await page.waitForURL(`${serverURL}/admin`)
 
-  const dashboardArtifact = page.locator('span[title="Dashboard"]')
+  const dashboardArtifact = page.locator('h2', { hasText: 'Gestion comercial' })
   await expect(dashboardArtifact).toBeVisible()
 }

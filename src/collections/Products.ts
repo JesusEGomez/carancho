@@ -1,0 +1,171 @@
+import type { CollectionConfig } from 'payload'
+
+import { isAdmin } from '@/access/isAdmin'
+import { publishedOrAdmin } from '@/access/publishedOrAdmin'
+import { formatSlug } from '@/lib/formatSlug'
+
+export const Products: CollectionConfig = {
+  slug: 'products',
+  admin: {
+    useAsTitle: 'name',
+    defaultColumns: ['name', 'status', 'price', 'stock', 'category'],
+  },
+  access: {
+    create: isAdmin,
+    delete: isAdmin,
+    read: publishedOrAdmin,
+    update: isAdmin,
+  },
+  hooks: {
+    beforeValidate: [
+      ({ data }) => {
+        if (!data) {
+          return data
+        }
+
+        if (typeof data.name === 'string' && !data.slug) {
+          return {
+            ...data,
+            slug: formatSlug(data.name),
+          }
+        }
+
+        if (typeof data.slug === 'string') {
+          return {
+            ...data,
+            slug: formatSlug(data.slug),
+          }
+        }
+
+        return data
+      },
+    ],
+  },
+  fields: [
+    {
+      name: 'name',
+      type: 'text',
+      required: true,
+    },
+    {
+      name: 'slug',
+      type: 'text',
+      required: true,
+      unique: true,
+      index: true,
+    },
+    {
+      name: 'category',
+      type: 'relationship',
+      relationTo: 'categories',
+      required: true,
+    },
+    {
+      name: 'status',
+      type: 'select',
+      defaultValue: 'published',
+      required: true,
+      options: [
+        {
+          label: 'Published',
+          value: 'published',
+        },
+        {
+          label: 'Draft',
+          value: 'draft',
+        },
+      ],
+    },
+    {
+      name: 'shortDescription',
+      type: 'textarea',
+      required: true,
+    },
+    {
+      name: 'description',
+      type: 'textarea',
+      required: true,
+    },
+    {
+      name: 'price',
+      type: 'number',
+      required: true,
+      min: 0,
+    },
+    {
+      name: 'compareAtPrice',
+      type: 'number',
+      min: 0,
+    },
+    {
+      name: 'stock',
+      type: 'number',
+      required: true,
+      defaultValue: 0,
+      min: 0,
+    },
+    {
+      name: 'isFeatured',
+      type: 'checkbox',
+      defaultValue: false,
+    },
+    {
+      name: 'badges',
+      type: 'select',
+      hasMany: true,
+      options: [
+        {
+          label: 'Nuevo',
+          value: 'nuevo',
+        },
+        {
+          label: 'Oferta',
+          value: 'oferta',
+        },
+        {
+          label: 'Destacado',
+          value: 'destacado',
+        },
+      ],
+    },
+    {
+      name: 'featuredImage',
+      type: 'upload',
+      relationTo: 'media',
+      required: true,
+    },
+    {
+      name: 'gallery',
+      type: 'upload',
+      relationTo: 'media',
+      hasMany: true,
+    },
+    {
+      name: 'features',
+      type: 'array',
+      fields: [
+        {
+          name: 'label',
+          type: 'text',
+          required: true,
+        },
+      ],
+    },
+    {
+      name: 'specifications',
+      type: 'array',
+      fields: [
+        {
+          name: 'label',
+          type: 'text',
+          required: true,
+        },
+        {
+          name: 'value',
+          type: 'text',
+          required: true,
+        },
+      ],
+    },
+  ],
+}

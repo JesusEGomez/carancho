@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-orange: #f05a19;
+  --color-brand-yellow: #f2c500;
+  --color-brand-ink: #0f172a;
+  --color-brand-cream: #fff8ee;
+  --color-brand-panel: #111b31;
+  --color-brand-border: #e9edf5;
+  --font-sans: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+  --font-display: "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white text-slate-900 antialiased;
+    background-image: radial-gradient(circle at top, rgba(242, 197, 0, 0.08), transparent 28%);
+  }
+
+  a {
+    @apply transition-colors;
+  }
+}
+
+@layer components {
+  .container-shell {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .section-title {
+    @apply text-3xl font-black tracking-tight text-brand-ink sm:text-4xl;
+  }
+
+  .surface-card {
+    @apply rounded-[28px] border border-slate-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.08)];
+  }
+
+  .orange-button {
+    @apply rounded-[16px] bg-brand-orange px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:bg-orange-600;
+  }
+
+  .pill-badge {
+    @apply rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em];
+  }
+}

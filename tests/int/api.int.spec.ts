@@ -17,4 +17,14 @@ describe('API', () => {
     })
     expect(users).toBeDefined()
   })
+
+  it('exposes catalog collections', async () => {
+    const [categories, products] = await Promise.all([
+      payload.find({ collection: 'categories' }),
+      payload.find({ collection: 'products' }),
+    ])
+
+    expect(categories).toBeDefined()
+    expect(products).toBeDefined()
+  })
 })
