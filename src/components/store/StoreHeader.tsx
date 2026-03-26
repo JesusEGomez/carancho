@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
@@ -56,7 +57,7 @@ function CloseIcon() {
   )
 }
 
-export function StoreHeader() {
+function StoreHeaderContent() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -186,5 +187,44 @@ export function StoreHeader() {
         ) : null}
       </div>
     </header>
+  )
+}
+
+function StoreHeaderFallback() {
+  return (
+    <header className="sticky top-0 z-50 border-b-4 border-brand-orange bg-white/95 shadow-sm backdrop-blur-sm">
+      <div className="container-shell py-3">
+        <div className="flex items-center justify-between gap-4">
+          <Link className="flex shrink-0 items-center gap-3" href="/">
+            <Image
+              alt="Carancho Pesca Deportiva"
+              className="h-10 w-10 rounded-full object-cover"
+              height={40}
+              src="/images/brand/carancho-logo.jpg"
+              width={40}
+            />
+            <span className="text-xl font-extrabold tracking-tight text-brand-ink">
+              CARANCHO <span className="text-brand-orange">PESCA</span>
+            </span>
+          </Link>
+
+          <div className="hidden h-10 max-w-sm flex-1 rounded-lg bg-[#f1eeea] sm:block" />
+
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-[#f1eeea]" />
+            <div className="hidden h-9 w-9 rounded-lg bg-[#f1eeea] sm:block" />
+            <div className="h-9 w-9 rounded-lg bg-[#f1eeea] md:hidden" />
+          </div>
+        </div>
+      </div>
+    </header>
+  )
+}
+
+export function StoreHeader() {
+  return (
+    <Suspense fallback={<StoreHeaderFallback />}>
+      <StoreHeaderContent />
+    </Suspense>
   )
 }
