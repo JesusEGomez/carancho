@@ -6,6 +6,12 @@ export type CategoryOption = {
   slug: string
 }
 
+export type MediaRecord = {
+  id: number
+  url?: string | null
+  alt: string
+}
+
 export type ProductRecord = {
   id: number
   name: string
@@ -17,10 +23,12 @@ export type ProductRecord = {
   stock: number
   status: 'published' | 'draft'
   isFeatured: boolean
+  showFeatures?: boolean | null
+  showSpecifications?: boolean | null
   badges?: ('nuevo' | 'oferta' | 'destacado')[] | null
   category: CategoryOption | number
-  featuredImage?: number | { id: number; url?: string | null; alt: string } | null
-  gallery?: ({ id: number; url?: string | null; alt: string } | number)[] | null
+  featuredImage?: number | MediaRecord | null
+  gallery?: (MediaRecord | number)[] | null
   features?: { label: string }[] | null
   specifications?: { label: string; value: string }[] | null
 }
@@ -119,7 +127,7 @@ export async function saveCategory(payload: Record<string, unknown>) {
 export async function uploadMedia(file: File, alt: string) {
   const token = getToken()
   const body = new FormData()
-  body.append('alt', alt)
+  body.append('_payload', JSON.stringify({ alt }))
   body.append('file', file)
 
   const response = await fetch('/api/media', {
@@ -128,11 +136,26 @@ export async function uploadMedia(file: File, alt: string) {
     method: 'POST',
   })
 
-  const data = (await response.json()) as { id: number; url?: string | null; alt: string }
+  const data = (await response.json()) as
+    | (MediaRecord & {
+        errors?: { message?: string }[]
+        message?: string
+      })
+    | {
+        doc?: MediaRecord
+        errors?: { message?: string }[]
+        message?: string
+      }
+
+  const media = 'doc' in data && data.doc ? data.doc : data
 
   if (!response.ok) {
-    throw new Error('No fue posible subir la imagen')
+    throw new Error(data.errors?.[0]?.message ?? data.message ?? 'No fue posible subir la imagen')
   }
 
-  return data
+  if (!media || typeof media !== 'object' || !('id' in media) || !media.id) {
+    throw new Error('La respuesta de media no incluyó un id válido')
+  }
+
+  return media
 }

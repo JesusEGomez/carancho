@@ -1,3 +1,5 @@
+import 'dotenv/config'
+
 import path from 'node:path'
 
 import { getPayload } from 'payload'
@@ -204,6 +206,8 @@ async function main() {
       name: product.name,
       price: product.price,
       shortDescription: product.shortDescription,
+      showFeatures: product.showFeatures ?? (product.features?.length ?? 0) > 0,
+      showSpecifications: product.showSpecifications ?? (product.specifications?.length ?? 0) > 0,
       slug: product.slug,
       specifications: (product.specifications ?? []).map((specification) => ({
         label: specification.label,

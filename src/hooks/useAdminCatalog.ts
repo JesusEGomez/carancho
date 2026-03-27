@@ -70,16 +70,23 @@ export function useUpsertProduct() {
       id: string | null
       payload: Record<string, unknown>
       featuredFile?: File | null
+      galleryFiles?: File[]
+      galleryAlt: string
+      galleryExistingIds?: number[]
       featuredAlt: string
     }
   >({
-    mutationFn: async ({ featuredAlt, featuredFile, id, payload }) => {
+    mutationFn: async ({ featuredAlt, featuredFile, galleryAlt, galleryExistingIds, galleryFiles, id, payload }) => {
       let featuredImage = payload.featuredImage
 
       if (featuredFile) {
         const media = await uploadMedia(featuredFile, featuredAlt)
         featuredImage = media.id
       }
+
+      const uploadedGallery = galleryFiles?.length
+        ? await Promise.all(galleryFiles.map(async (file) => uploadMedia(file, galleryAlt)))
+        : []
 
       if (!featuredImage) {
         throw new Error('La imagen principal es obligatoria')
@@ -88,6 +95,7 @@ export function useUpsertProduct() {
       return saveProduct(id, {
         ...payload,
         featuredImage,
+        gallery: [...(galleryExistingIds ?? []), ...uploadedGallery.map((image) => image.id)],
       })
     },
     onSuccess: (_, variables) => {

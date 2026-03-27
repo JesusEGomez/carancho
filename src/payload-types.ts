@@ -201,12 +201,14 @@ export interface Product {
   badges?: ('nuevo' | 'oferta' | 'destacado')[] | null;
   featuredImage: number | Media;
   gallery?: (number | Media)[] | null;
+  showFeatures?: boolean | null;
   features?:
     | {
         label: string;
         id?: string | null;
       }[]
     | null;
+  showSpecifications?: boolean | null;
   specifications?:
     | {
         label: string;
@@ -373,12 +375,14 @@ export interface ProductsSelect<T extends boolean = true> {
   badges?: T;
   featuredImage?: T;
   gallery?: T;
+  showFeatures?: T;
   features?:
     | T
     | {
         label?: T;
         id?: T;
       };
+  showSpecifications?: T;
   specifications?:
     | T
     | {
