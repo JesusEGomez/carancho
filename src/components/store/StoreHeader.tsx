@@ -1,88 +1,230 @@
+'use client'
+
+import { Suspense } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
 
-export function StoreHeader() {
+const navLinks = [
+  { href: '/', label: 'Inicio' },
+  { href: '/productos?categoria=canas-y-reels', label: 'Pesca' },
+  { href: '/productos?categoria=camping', label: 'Camping' },
+  { href: '/productos?categoria=hogar', label: 'Hogar' },
+] as const
+
+function SearchIcon() {
   return (
-    <header className="sticky top-0 z-40 border-b border-brand-orange/10 bg-white/95 backdrop-blur">
-      <div className="container-shell py-4">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center justify-between gap-4">
-              <Link href="/" className="flex items-center gap-3">
-                <div className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-brand-orange bg-white shadow-[0_8px_18px_rgba(240,90,25,0.18)]">
-                  <Image
-                    alt="Logo Carancho Pesca Deportiva"
-                    className="object-cover"
-                    fill
-                    sizes="48px"
-                    src="/images/brand/carancho-logo.jpg"
-                  />
-                </div>
-                <div>
-                  <p className="font-display text-xl font-black uppercase tracking-tight text-brand-ink">
-                    Carancho <span className="text-brand-orange">Pesca</span>
-                  </p>
-                </div>
-              </Link>
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+    </svg>
+  )
+}
 
+function ShoppingCartIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <circle cx="9" cy="20" r="1.5" />
+      <circle cx="18" cy="20" r="1.5" />
+      <path d="M3 4h2l2.2 10.5a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function UserIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M5 20c1.8-3.3 4.1-5 7-5s5.2 1.7 7 5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function MenuIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function CloseIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="m6 6 12 12M18 6 6 18" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function StoreHeaderContent() {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  const isActiveLink = (href: string) => {
+    const [linkPath, queryString] = href.split('?')
+
+    if (linkPath === '/' && pathname === '/') {
+      return true
+    }
+
+    if (linkPath !== '/' && pathname !== linkPath) {
+      return false
+    }
+
+    if (!queryString) {
+      return pathname === linkPath
+    }
+
+    const [key, value] = queryString.split('=')
+    return searchParams.get(key) === value
+  }
+
+  return (
+    <header className="sticky top-0 z-50 border-b-4 border-brand-orange bg-white/95 shadow-sm backdrop-blur-sm">
+      <div className="container-shell py-3">
+        <div className="flex items-center justify-between gap-4">
+          <Link className="flex shrink-0 items-center gap-3" href="/">
+            <Image
+              alt="Carancho Pesca Deportiva"
+              className="h-10 w-10 rounded-full object-cover"
+              height={40}
+              src="/images/brand/carancho-logo.jpg"
+              width={40}
+            />
+            <span className="text-xl font-extrabold tracking-tight text-brand-ink">
+              CARANCHO <span className="text-brand-orange">PESCA</span>
+            </span>
+          </Link>
+
+          <nav className="hidden items-center gap-6 md:flex">
+            {navLinks.map((link) => (
               <Link
-                href="/admin/login"
-                className="rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 hover:border-brand-orange hover:text-brand-orange lg:hidden"
+                key={link.href}
+                className={`text-sm font-semibold transition-colors hover:text-brand-orange ${
+                  isActiveLink(link.href) ? 'border-b-2 border-brand-orange pb-0.5 text-brand-orange' : 'text-brand-ink'
+                }`}
+                href={link.href}
               >
-                Admin
+                {link.label}
               </Link>
-            </div>
+            ))}
+          </nav>
 
-            <form action="/productos" className="flex flex-1 items-center gap-2 lg:max-w-xl">
+          <form action="/productos" className="relative hidden max-w-sm flex-1 sm:flex">
+            <input
+              className="w-full rounded-lg bg-[#f1eeea] py-2.5 pl-10 pr-4 text-sm text-brand-ink placeholder:text-slate-500 focus:ring-2 focus:ring-brand-orange focus:outline-none"
+              name="q"
+              placeholder="Buscar productos..."
+              type="search"
+            />
+            <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+              <SearchIcon />
+            </div>
+          </form>
+
+          <div className="flex items-center gap-3">
+            <button className="relative rounded-lg p-2 transition-colors hover:bg-[#f1eeea]" type="button">
+              <ShoppingCartIcon />
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-orange text-[10px] font-bold text-white">
+                0
+              </span>
+            </button>
+            <Link className="hidden rounded-lg p-2 transition-colors hover:bg-[#f1eeea] sm:block" href="/admin/login">
+              <UserIcon />
+            </Link>
+            <button
+              aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
+              className="rounded-lg p-2 md:hidden"
+              onClick={() => {
+                setMobileOpen((open) => !open)
+              }}
+              type="button"
+            >
+              {mobileOpen ? <CloseIcon /> : <MenuIcon />}
+            </button>
+          </div>
+        </div>
+
+        {mobileOpen ? (
+          <nav className="mt-4 flex flex-col gap-2 border-t border-brand-border pb-2 pt-4 md:hidden">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                className={`rounded-lg px-4 py-3 text-base font-semibold transition-colors hover:bg-[#f1eeea] ${
+                  isActiveLink(link.href) ? 'bg-[#fff1e8] text-brand-orange' : 'text-brand-ink'
+                }`}
+                href={link.href}
+                onClick={() => {
+                  setMobileOpen(false)
+                }}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link
+              className="rounded-lg px-4 py-3 text-base font-semibold transition-colors hover:bg-[#f1eeea]"
+              href="/admin/login"
+              onClick={() => {
+                setMobileOpen(false)
+              }}
+            >
+              Admin
+            </Link>
+            <form action="/productos" className="relative mt-2">
+              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                <SearchIcon />
+              </div>
               <input
-                className="h-11 flex-1 rounded-full border border-slate-200 bg-slate-50 px-5 text-sm outline-none transition focus:border-brand-orange"
+                className="w-full rounded-lg bg-[#f1eeea] py-3 pl-10 pr-4 text-sm text-brand-ink placeholder:text-slate-500 focus:ring-2 focus:ring-brand-orange focus:outline-none"
                 name="q"
-                placeholder="Buscar cañas, señuelos, artículos para el hogar..."
+                placeholder="Buscar productos..."
                 type="search"
               />
-              <button className="h-11 rounded-[12px] bg-brand-orange px-5 text-xs font-black uppercase tracking-[0.14em] text-white">
-                Buscar
-              </button>
             </form>
+          </nav>
+        ) : null}
+      </div>
+    </header>
+  )
+}
 
-            <div className="hidden items-center gap-5 lg:flex">
-              <Link
-                href="/admin/login"
-                className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-brand-orange"
-              >
-                Mi cuenta
-              </Link>
-              <Link href="/admin/login" className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-brand-ink">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-sm">🛒</span>
-                <span>Mi carrito</span>
-              </Link>
-            </div>
-          </div>
+function StoreHeaderFallback() {
+  return (
+    <header className="sticky top-0 z-50 border-b-4 border-brand-orange bg-white/95 shadow-sm backdrop-blur-sm">
+      <div className="container-shell py-3">
+        <div className="flex items-center justify-between gap-4">
+          <Link className="flex shrink-0 items-center gap-3" href="/">
+            <Image
+              alt="Carancho Pesca Deportiva"
+              className="h-10 w-10 rounded-full object-cover"
+              height={40}
+              src="/images/brand/carancho-logo.jpg"
+              width={40}
+            />
+            <span className="text-xl font-extrabold tracking-tight text-brand-ink">
+              CARANCHO <span className="text-brand-orange">PESCA</span>
+            </span>
+          </Link>
 
-          <div className="flex items-center justify-center border-t border-brand-orange/15 pt-3">
-            <nav className="flex flex-wrap items-center justify-center gap-5 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
-              <Link href="/" className="border-b-2 border-brand-orange pb-1 text-brand-ink">
-                Inicio
-              </Link>
-              <Link href="/productos" className="pb-1 hover:text-brand-orange">
-                Catálogo
-              </Link>
-              <Link href="/productos?categoria=canas-y-reels" className="pb-1 hover:text-brand-orange">
-                Pesca
-              </Link>
-              <Link href="/productos?categoria=senuelos" className="pb-1 hover:text-brand-orange">
-                Camping
-              </Link>
-              <Link href="/productos?categoria=hogar" className="pb-1 hover:text-brand-orange">
-                Hogar
-              </Link>
-              <a href="/#contacto" className="pb-1 hover:text-brand-orange">
-                Contacto
-              </a>
-            </nav>
+          <div className="hidden h-10 max-w-sm flex-1 rounded-lg bg-[#f1eeea] sm:block" />
+
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-[#f1eeea]" />
+            <div className="hidden h-9 w-9 rounded-lg bg-[#f1eeea] sm:block" />
+            <div className="h-9 w-9 rounded-lg bg-[#f1eeea] md:hidden" />
           </div>
         </div>
       </div>
     </header>
+  )
+}
+
+export function StoreHeader() {
+  return (
+    <Suspense fallback={<StoreHeaderFallback />}>
+      <StoreHeaderContent />
+    </Suspense>
   )
 }
