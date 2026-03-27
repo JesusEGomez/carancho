@@ -1,5 +1,7 @@
 'use client'
 
+import { upload as uploadToVercelBlob } from '@vercel/blob/client'
+
 export type CategoryOption = {
   id: number
   name: string
@@ -39,6 +41,8 @@ export type DashboardStats = {
   totalCategories: number
   lowStockProducts: number
 }
+
+const VERCEL_BLOB_CLIENT_UPLOAD_ROUTE = '/api/vercel-blob-client-upload-route'
 
 function getToken() {
   if (typeof window === 'undefined') {
@@ -126,36 +130,70 @@ export async function saveCategory(payload: Record<string, unknown>) {
 
 export async function uploadMedia(file: File, alt: string) {
   const token = getToken()
-  const body = new FormData()
-  body.append('_payload', JSON.stringify({ alt }))
-  body.append('file', file)
+  const createMediaFromResponse = async (body: FormData) => {
+    const response = await fetch('/api/media', {
+      body,
+      headers: token ? { Authorization: `JWT ${token}` } : undefined,
+      method: 'POST',
+    })
 
-  const response = await fetch('/api/media', {
-    body,
-    headers: token ? { Authorization: `JWT ${token}` } : undefined,
-    method: 'POST',
-  })
+    const data = (await response.json()) as
+      | (MediaRecord & {
+          errors?: { message?: string }[]
+          message?: string
+        })
+      | {
+          doc?: MediaRecord
+          errors?: { message?: string }[]
+          message?: string
+        }
 
-  const data = (await response.json()) as
-    | (MediaRecord & {
-        errors?: { message?: string }[]
-        message?: string
-      })
-    | {
-        doc?: MediaRecord
-        errors?: { message?: string }[]
-        message?: string
-      }
+    const media = 'doc' in data && data.doc ? data.doc : data
 
-  const media = 'doc' in data && data.doc ? data.doc : data
+    if (!response.ok) {
+      throw new Error(data.errors?.[0]?.message ?? data.message ?? 'No fue posible subir la imagen')
+    }
 
-  if (!response.ok) {
-    throw new Error(data.errors?.[0]?.message ?? data.message ?? 'No fue posible subir la imagen')
+    if (!media || typeof media !== 'object' || !('id' in media) || !media.id) {
+      throw new Error('La respuesta de media no incluyó un id válido')
+    }
+
+    return media
   }
 
-  if (!media || typeof media !== 'object' || !('id' in media) || !media.id) {
-    throw new Error('La respuesta de media no incluyó un id válido')
-  }
+  try {
+    const blob = await uploadToVercelBlob(file.name, file, {
+      access: 'public',
+      clientPayload: 'media',
+      contentType: file.type,
+      handleUploadUrl: VERCEL_BLOB_CLIENT_UPLOAD_ROUTE,
+    })
 
-  return media
+    const pathnameSegments = blob.pathname.split('/').filter(Boolean)
+    const filename = pathnameSegments[pathnameSegments.length - 1] ?? file.name
+    const prefix = pathnameSegments.slice(0, -1).join('/')
+    const body = new FormData()
+
+    body.append('_payload', JSON.stringify({ alt }))
+    body.append(
+      'file',
+      JSON.stringify({
+        clientUploadContext: {
+          prefix,
+        },
+        collectionSlug: 'media',
+        filename,
+        mimeType: file.type,
+        size: file.size,
+      }),
+    )
+
+    return await createMediaFromResponse(body)
+  } catch {
+    const body = new FormData()
+    body.append('_payload', JSON.stringify({ alt }))
+    body.append('file', file)
+
+    return createMediaFromResponse(body)
+  }
 }
