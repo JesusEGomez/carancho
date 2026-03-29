@@ -68,6 +68,8 @@ const product = (input: {
     featuredImage: media(input.id + 2000, input.name, input.image),
     gallery: [media(input.id + 3000, `${input.name} gallery`, input.image)],
     features: input.features.map((label, index) => ({ id: String(input.id * 10 + index), label })),
+    showFeatures: input.features.length > 0,
+    showSpecifications: input.specifications.length > 0,
     specifications: input.specifications.map(([label, value], index) => ({
       id: String(input.id * 10 + index),
       label,

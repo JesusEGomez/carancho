@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -11,12 +11,21 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { isAuthenticated, isLoading, logout, user } = useAuth()
+  const [showTechnicalAccess, setShowTechnicalAccess] = useState(false)
 
   useEffect(() => {
     if (!isLoading && pathname !== '/admin/login' && (!isAuthenticated || user?.role !== 'admin')) {
       router.replace('/admin/login')
     }
   }, [isAuthenticated, isLoading, pathname, router, user])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    setShowTechnicalAccess(['localhost', '127.0.0.1'].includes(window.location.hostname))
+  }, [])
 
   if (pathname === '/admin/login') {
     return <>{children}</>
@@ -49,6 +58,39 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <p className="mt-2 text-xs font-black uppercase tracking-[0.2em] text-slate-400">Carancho Admin</p>
           </div>
 
+          <div className="px-5 pt-6">
+            <div className="rounded-[18px] bg-[#fff7f1] px-4 py-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Sesión activa</p>
+                <p className="mt-2 text-sm font-black text-brand-ink">{user.name}</p>
+                <p className="break-all text-xs text-slate-400">{user.email}</p>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#f1ddcf] pt-3">
+                <Link className="text-xs font-black uppercase tracking-[0.18em] text-brand-ink hover:text-brand-orange" href="/">
+                  Ver tienda
+                </Link>
+                <button
+                  className="text-xs font-black uppercase tracking-[0.18em] text-slate-400 hover:text-brand-orange"
+                  onClick={() => {
+                    void logout().finally(() => router.replace('/'))
+                  }}
+                  type="button"
+                >
+                  Salir
+                </button>
+              </div>
+
+              {showTechnicalAccess ? (
+                <div className="mt-3 border-t border-[#f1ddcf] pt-3">
+                  <Link className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 hover:text-brand-orange" href="/payload-admin">
+                    Acceso técnico
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
           <nav className="flex-1 space-y-2 px-5 py-8">
             {navigation.map((item) => {
               const isActive = pathname === item.href
@@ -68,24 +110,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               )
             })}
           </nav>
-
-          <div className="px-5 pb-6">
-            <div className="flex items-center justify-between rounded-[18px] bg-[#fff7f1] px-4 py-3">
-              <div>
-                <p className="text-sm font-black text-brand-ink">{user.name}</p>
-                <p className="text-xs text-slate-400">{user.email}</p>
-              </div>
-              <button
-                className="text-xs font-black uppercase tracking-[0.18em] text-slate-400 hover:text-brand-orange"
-                onClick={() => {
-                  void logout().finally(() => router.replace('/admin/login'))
-                }}
-                type="button"
-              >
-                Salir
-              </button>
-            </div>
-          </div>
         </aside>
 
         <div className="flex flex-col">
@@ -94,12 +118,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <h1 className="text-4xl font-black tracking-tight text-brand-ink">Gestión de Productos</h1>
             </div>
             <div className="flex gap-3">
-              <Link
-                className="rounded-full border border-[#dfe5ef] bg-white px-5 py-3 text-sm font-bold text-brand-ink"
-                href="/payload-admin"
-              >
-                Abrir Payload
-              </Link>
               <Link className="rounded-full bg-brand-orange px-5 py-3 text-sm font-black text-white" href="/admin/productos/nuevo">
                 Nuevo Producto
               </Link>

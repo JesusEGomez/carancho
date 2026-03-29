@@ -1,16 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFieldArray, useForm, useWatch, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
 import { useCategories, useUpsertProduct } from '@/hooks/useAdminCatalog'
+import type { MediaRecord } from '@/services/adminApi'
 
 const specificationSchema = z.object({
-  label: z.string().min(1, 'Campo requerido'),
-  value: z.string().min(1, 'Campo requerido'),
+  label: z.string(),
+  value: z.string(),
+})
+
+const featureSchema = z.object({
+  label: z.string(),
 })
 
 const productFormSchema = z.object({
@@ -18,13 +23,15 @@ const productFormSchema = z.object({
   categoryId: z.coerce.number().min(1, 'Selecciona una categoria'),
   compareAtPrice: z.union([z.literal(''), z.coerce.number().min(0)]).optional(),
   description: z.string().min(10, 'La descripcion es obligatoria'),
-  features: z.array(z.object({ label: z.string().min(1, 'Campo requerido') })).min(1),
+  features: z.array(featureSchema).default([]),
   isFeatured: z.boolean().default(true),
   name: z.string().min(3, 'El nombre es obligatorio'),
   price: z.coerce.number().min(0, 'Precio invalido'),
   shortDescription: z.string().min(10, 'La descripcion corta es obligatoria'),
+  showFeatures: z.boolean().default(false),
+  showSpecifications: z.boolean().default(false),
   slug: z.string().min(3, 'El slug es obligatorio'),
-  specifications: z.array(specificationSchema).min(1),
+  specifications: z.array(specificationSchema).default([]),
   status: z.enum(['published', 'draft']),
   stock: z.coerce.number().min(0, 'Stock invalido'),
 })
@@ -32,7 +39,9 @@ const productFormSchema = z.object({
 export type ProductFormValues = z.infer<typeof productFormSchema>
 
 export type ProductFormData = ProductFormValues & {
+  featuredImage?: MediaRecord | null
   featuredImageId?: number | null
+  gallery?: MediaRecord[]
   id?: number
 }
 
@@ -40,27 +49,49 @@ type ProductFormProps = {
   initialData?: ProductFormData
 }
 
+const emptyFeature = { label: '' }
+const emptySpecification = { label: '', value: '' }
+
 const defaultValues: ProductFormData = {
   badges: [],
   categoryId: 0,
   compareAtPrice: '',
   description: '',
-  features: [{ label: '' }],
+  featuredImage: null,
+  features: [],
+  gallery: [],
   isFeatured: true,
   name: '',
   price: 0,
   shortDescription: '',
+  showFeatures: false,
+  showSpecifications: false,
   slug: '',
-  specifications: [{ label: '', value: '' }],
+  specifications: [],
   status: 'published',
   stock: 0,
 }
+
+const filterFeatures = (features: ProductFormValues['features']) =>
+  features
+    .map((feature) => ({ label: feature.label.trim() }))
+    .filter((feature) => feature.label.length > 0)
+
+const filterSpecifications = (specifications: ProductFormValues['specifications']) =>
+  specifications
+    .map((specification) => ({
+      label: specification.label.trim(),
+      value: specification.value.trim(),
+    }))
+    .filter((specification) => specification.label.length > 0 && specification.value.length > 0)
 
 export function ProductForm({ initialData }: ProductFormProps) {
   const router = useRouter()
   const categoriesQuery = useCategories()
   const upsertProductMutation = useUpsertProduct()
   const [featuredFile, setFeaturedFile] = useState<File | null>(null)
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([])
+  const [existingGallery, setExistingGallery] = useState<MediaRecord[]>(initialData?.gallery ?? [])
   const {
     control,
     formState: { errors },
@@ -86,6 +117,9 @@ export function ProductForm({ initialData }: ProductFormProps) {
   useEffect(() => {
     if (initialData) {
       reset(initialData)
+      setExistingGallery(initialData.gallery ?? [])
+      setFeaturedFile(null)
+      setGalleryFiles([])
     }
   }, [initialData, reset])
 
@@ -96,6 +130,16 @@ export function ProductForm({ initialData }: ProductFormProps) {
     control,
     name: 'badges',
   }) ?? []
+  const showFeatures = useWatch({
+    control,
+    name: 'showFeatures',
+  })
+  const showSpecifications = useWatch({
+    control,
+    name: 'showSpecifications',
+  })
+
+  const nextGalleryNames = useMemo(() => galleryFiles.map((file) => file.name), [galleryFiles])
 
   return (
     <section className="surface-card max-w-5xl p-8">
@@ -107,10 +151,16 @@ export function ProductForm({ initialData }: ProductFormProps) {
       <form
         className="grid gap-6"
         onSubmit={handleSubmit((values) => {
+          const nextFeatures = values.showFeatures ? filterFeatures(values.features) : []
+          const nextSpecifications = values.showSpecifications ? filterSpecifications(values.specifications) : []
+
           void upsertProductMutation
             .mutateAsync({
               featuredAlt: values.name,
               featuredFile,
+              galleryAlt: values.name,
+              galleryExistingIds: existingGallery.map((image) => image.id),
+              galleryFiles,
               id: initialData?.id ? String(initialData.id) : null,
               payload: {
                 badges: values.badges,
@@ -121,13 +171,15 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     : Number(values.compareAtPrice),
                 description: values.description,
                 featuredImage: initialData?.featuredImageId ?? null,
-                features: values.features,
+                features: nextFeatures,
                 isFeatured: values.isFeatured,
                 name: values.name,
                 price: values.price,
                 shortDescription: values.shortDescription,
+                showFeatures: values.showFeatures && nextFeatures.length > 0,
+                showSpecifications: values.showSpecifications && nextSpecifications.length > 0,
                 slug: values.slug,
-                specifications: values.specifications,
+                specifications: nextSpecifications,
                 status: values.status,
                 stock: values.stock,
               },
@@ -222,7 +274,74 @@ export function ProductForm({ initialData }: ProductFormProps) {
               onChange={(event) => setFeaturedFile(event.target.files?.[0] ?? null)}
               type="file"
             />
+            {featuredFile ? <span className="text-xs font-medium text-slate-500">Nueva imagen: {featuredFile.name}</span> : null}
           </label>
+        </div>
+
+        {initialData?.featuredImage?.url && !featuredFile ? (
+          <div className="rounded-3xl border border-slate-200 p-5">
+            <p className="text-sm font-black text-brand-ink">Imagen principal actual</p>
+            <div className="mt-4 flex items-center gap-4">
+              <img
+                alt={initialData.featuredImage.alt}
+                className="h-20 w-20 rounded-2xl object-cover"
+                src={initialData.featuredImage.url}
+              />
+              <div className="text-sm text-slate-500">
+                <p className="font-bold text-brand-ink">{initialData.featuredImage.alt}</p>
+                <p>Se conservará si no subís una nueva imagen.</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="rounded-3xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-black text-brand-ink">Galería adicional</p>
+              <p className="mt-1 text-sm text-slate-500">Podés subir varias imágenes extra para el detalle del producto.</p>
+            </div>
+          </div>
+
+          <label className="mt-4 grid gap-2 text-sm font-bold text-brand-ink">
+            Nuevas imágenes
+            <input
+              accept="image/*"
+              className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-medium"
+              multiple
+              onChange={(event) => setGalleryFiles(Array.from(event.target.files ?? []))}
+              type="file"
+            />
+          </label>
+
+          {existingGallery.length ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {existingGallery.map((image) => (
+                <div key={image.id} className="rounded-2xl border border-slate-200 p-3">
+                  {image.url ? <img alt={image.alt} className="h-28 w-full rounded-xl object-cover" src={image.url} /> : null}
+                  <p className="mt-3 truncate text-sm font-bold text-brand-ink">{image.alt}</p>
+                  <button
+                    className="mt-3 text-sm font-black text-red-600"
+                    onClick={() => setExistingGallery((current) => current.filter((item) => item.id !== image.id))}
+                    type="button"
+                  >
+                    Quitar imagen
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {nextGalleryNames.length ? (
+            <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
+              <p className="font-bold text-brand-ink">Nuevas imágenes a subir</p>
+              <div className="mt-2 grid gap-1">
+                {nextGalleryNames.map((name) => (
+                  <span key={name}>{name}</span>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <label className="grid gap-2 text-sm font-bold text-brand-ink">
@@ -247,51 +366,92 @@ export function ProductForm({ initialData }: ProductFormProps) {
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 p-5">
-            <p className="text-sm font-black text-brand-ink">Features</p>
-            <div className="mt-4 grid gap-3">
-              {featuresFieldArray.fields.map((field, index) => (
-                <div key={field.id}>
-                  <input
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-                    {...register(`features.${index}.label`)}
-                  />
+            <label className="flex items-center gap-3 text-sm font-black text-brand-ink">
+              <input type="checkbox" {...register('showFeatures')} />
+              Mostrar Características Generales
+            </label>
+
+            {showFeatures ? (
+              <>
+                <div className="mt-4 grid gap-3">
+                  {featuresFieldArray.fields.length ? null : (
+                    <p className="text-sm text-slate-500">Agregá las características que quieras mostrar en la ficha.</p>
+                  )}
+                  {featuresFieldArray.fields.map((field, index) => (
+                    <div key={field.id} className="flex gap-3">
+                      <input
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
+                        placeholder="Ej: Mango ergonómico"
+                        {...register(`features.${index}.label`)}
+                      />
+                      <button
+                        className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-500"
+                        onClick={() => featuresFieldArray.remove(index)}
+                        type="button"
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <button
-              className="mt-4 text-sm font-black text-brand-orange"
-              onClick={() => featuresFieldArray.append({ label: '' })}
-              type="button"
-            >
-              + Agregar feature
-            </button>
+                <button
+                  className="mt-4 text-sm font-black text-brand-orange"
+                  onClick={() => featuresFieldArray.append(emptyFeature)}
+                  type="button"
+                >
+                  + Agregar característica
+                </button>
+              </>
+            ) : (
+              <p className="mt-4 text-sm text-slate-500">La sección no se mostrará en el detalle del producto.</p>
+            )}
           </div>
 
           <div className="rounded-3xl border border-slate-200 p-5">
-            <p className="text-sm font-black text-brand-ink">Especificaciones</p>
-            <div className="mt-4 grid gap-3">
-              {specificationsFieldArray.fields.map((field, index) => (
-                <div key={field.id} className="grid gap-3 sm:grid-cols-2">
-                  <input
-                    className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-                    placeholder="Largo"
-                    {...register(`specifications.${index}.label`)}
-                  />
-                  <input
-                    className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-                    placeholder="2.10 metros"
-                    {...register(`specifications.${index}.value`)}
-                  />
+            <label className="flex items-center gap-3 text-sm font-black text-brand-ink">
+              <input type="checkbox" {...register('showSpecifications')} />
+              Mostrar Especificaciones Técnicas
+            </label>
+
+            {showSpecifications ? (
+              <>
+                <div className="mt-4 grid gap-3">
+                  {specificationsFieldArray.fields.length ? null : (
+                    <p className="text-sm text-slate-500">Agregá pares de título y valor según el producto.</p>
+                  )}
+                  {specificationsFieldArray.fields.map((field, index) => (
+                    <div key={field.id} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                      <input
+                        className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
+                        placeholder="Largo"
+                        {...register(`specifications.${index}.label`)}
+                      />
+                      <input
+                        className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
+                        placeholder="2.10 metros"
+                        {...register(`specifications.${index}.value`)}
+                      />
+                      <button
+                        className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-500"
+                        onClick={() => specificationsFieldArray.remove(index)}
+                        type="button"
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <button
-              className="mt-4 text-sm font-black text-brand-orange"
-              onClick={() => specificationsFieldArray.append({ label: '', value: '' })}
-              type="button"
-            >
-              + Agregar especificacion
-            </button>
+                <button
+                  className="mt-4 text-sm font-black text-brand-orange"
+                  onClick={() => specificationsFieldArray.append(emptySpecification)}
+                  type="button"
+                >
+                  + Agregar especificación
+                </button>
+              </>
+            ) : (
+              <p className="mt-4 text-sm text-slate-500">La sección no se mostrará en el detalle del producto.</p>
+            )}
           </div>
         </div>
 

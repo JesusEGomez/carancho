@@ -24,6 +24,11 @@ export default async function ProductDetailPage({ params }: Props) {
   }
 
   const { product, relatedProducts } = data
+  const features = product.features?.filter((feature) => feature.label.trim().length > 0) ?? []
+  const specifications =
+    product.specifications?.filter((specification) => specification.label.trim().length > 0 && specification.value.trim().length > 0) ?? []
+  const showFeatures = (product.showFeatures ?? features.length > 0) && features.length > 0
+  const showSpecifications = (product.showSpecifications ?? specifications.length > 0) && specifications.length > 0
   const gallery = (product.gallery?.length ? product.gallery : [product.featuredImage]) as Media[]
 
   return (
@@ -116,30 +121,34 @@ export default async function ProductDetailPage({ params }: Props) {
             <h2 className="text-3xl font-black text-brand-ink">Descripción del Producto</h2>
             <p className="mt-5 leading-8 text-slate-600">{product.description}</p>
 
-            <div className="mt-8 rounded-[22px] bg-white p-6 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
-              <h3 className="text-lg font-black text-brand-ink">Características Principales</h3>
-              <ul className="mt-5 space-y-3">
-                {product.features?.map((feature) => (
-                  <li key={feature.id} className="flex items-start gap-3 text-sm font-medium text-slate-600">
-                    <span className="mt-2 h-2 w-2 rounded-full bg-emerald-500" />
-                    <span>{feature.label}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {showFeatures ? (
+              <div className="mt-8 rounded-[22px] bg-white p-6 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+                <h3 className="text-lg font-black text-brand-ink">Características Generales</h3>
+                <ul className="mt-5 space-y-3">
+                  {features.map((feature, index) => (
+                    <li key={`${feature.label}-${index}`} className="flex items-start gap-3 text-sm font-medium text-slate-600">
+                      <span className="mt-2 h-2 w-2 rounded-full bg-emerald-500" />
+                      <span>{feature.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
 
-          <div className="rounded-[22px] bg-white p-6 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
-            <h3 className="text-lg font-black text-brand-ink">Especificaciones Técnicas</h3>
-            <div className="mt-5 divide-y divide-slate-100">
-              {product.specifications?.map((specification) => (
-                <div key={specification.id} className="flex items-center justify-between gap-4 py-4 text-sm">
-                  <span className="font-semibold text-slate-500">{specification.label}</span>
-                  <span className="text-right font-bold text-brand-ink">{specification.value}</span>
-                </div>
-              ))}
+          {showSpecifications ? (
+            <div className="rounded-[22px] bg-white p-6 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+              <h3 className="text-lg font-black text-brand-ink">Especificaciones Técnicas</h3>
+              <div className="mt-5 divide-y divide-slate-100">
+                {specifications.map((specification, index) => (
+                  <div key={`${specification.label}-${index}`} className="flex items-center justify-between gap-4 py-4 text-sm">
+                    <span className="font-semibold text-slate-500">{specification.label}</span>
+                    <span className="text-right font-bold text-brand-ink">{specification.value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
         </section>
 
         {relatedProducts.length ? (

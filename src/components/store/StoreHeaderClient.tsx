@@ -31,15 +31,6 @@ function ShoppingCartIcon() {
   )
 }
 
-function UserIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M5 20c1.8-3.3 4.1-5 7-5s5.2 1.7 7 5" strokeLinecap="round" />
-    </svg>
-  )
-}
-
 function MenuIcon() {
   return (
     <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -130,9 +121,6 @@ export function StoreHeaderClient() {
                 0
               </span>
             </button>
-            <Link className="hidden rounded-lg p-2 transition-colors hover:bg-[#f1eeea] sm:block" href="/admin/login">
-              <UserIcon />
-            </Link>
             <button
               aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
               className="rounded-lg p-2 md:hidden"
@@ -162,15 +150,6 @@ export function StoreHeaderClient() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              className="rounded-lg px-4 py-3 text-base font-semibold transition-colors hover:bg-[#f1eeea]"
-              href="/admin/login"
-              onClick={() => {
-                setMobileOpen(false)
-              }}
-            >
-              Admin
-            </Link>
             <form action="/productos" className="relative mt-2">
               <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
                 <SearchIcon />

@@ -141,6 +141,11 @@ export const Products: CollectionConfig = {
       hasMany: true,
     },
     {
+      name: 'showFeatures',
+      type: 'checkbox',
+      defaultValue: false,
+    },
+    {
       name: 'features',
       type: 'array',
       fields: [
@@ -150,6 +155,11 @@ export const Products: CollectionConfig = {
           required: true,
         },
       ],
+    },
+    {
+      name: 'showSpecifications',
+      type: 'checkbox',
+      defaultValue: false,
     },
     {
       name: 'specifications',
