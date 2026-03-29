@@ -20,9 +20,13 @@ function runYarnScript(script) {
   }
 }
 
-if (process.env.DATABASE_URL) {
+const isPreviewDeployment = process.env.VERCEL_ENV === 'preview'
+
+if (process.env.DATABASE_URL && !isPreviewDeployment) {
   console.log('Running Payload migrations before build...')
   runYarnScript('migrate')
+} else if (process.env.DATABASE_URL && isPreviewDeployment) {
+  console.log('Skipping Payload migrations during Vercel preview build.')
 } else {
   console.log('Skipping Payload migrations because DATABASE_URL is not set.')
 }
