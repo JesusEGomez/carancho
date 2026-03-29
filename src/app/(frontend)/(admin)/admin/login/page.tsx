@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { z } from 'zod'
 
+import { AdminAlert, AdminField, AdminInput } from '@/components/admin/form-primitives'
 import { useAuth } from '@/providers/AuthProvider'
 
 const loginSchema = z.object({
@@ -53,29 +54,25 @@ export default function AdminLoginPage() {
               .finally(() => setIsSubmitting(false))
           })}
         >
-          <label className="grid gap-2 text-sm font-bold text-brand-ink">
-            Email
-            <input
+          <AdminField error={errors.email?.message} label="Email" required>
+            <AdminInput
               autoComplete="email"
-              className="h-12 rounded-[18px] border border-[#dfe5ef] px-4 font-medium outline-none focus:border-brand-orange"
+              className="h-12 rounded-[18px] border-[#dfe5ef]"
               {...register('email')}
               type="email"
             />
-            {errors.email ? <span className="text-xs font-semibold text-red-600">{errors.email.message}</span> : null}
-          </label>
+          </AdminField>
 
-          <label className="grid gap-2 text-sm font-bold text-brand-ink">
-            Password
-            <input
+          <AdminField error={errors.password?.message} label="Password" required>
+            <AdminInput
               autoComplete="current-password"
-              className="h-12 rounded-[18px] border border-[#dfe5ef] px-4 font-medium outline-none focus:border-brand-orange"
+              className="h-12 rounded-[18px] border-[#dfe5ef]"
               {...register('password')}
               type="password"
             />
-            {errors.password ? <span className="text-xs font-semibold text-red-600">{errors.password.message}</span> : null}
-          </label>
+          </AdminField>
 
-          {error ? <p className="rounded-[18px] bg-red-50 px-4 py-3 text-sm font-bold text-red-600">{error}</p> : null}
+          {error ? <AdminAlert>{error}</AdminAlert> : null}
 
           <button
             className="mt-2 h-14 rounded-full bg-brand-orange text-base font-black uppercase tracking-[0.12em] text-white hover:bg-orange-600 disabled:opacity-60"
