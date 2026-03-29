@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
-import { CategoryCard } from '@/components/store/CategoryCard'
+import { FeaturedCategoriesCarousel } from '@/components/store/FeaturedCategoriesCarousel'
 import { StoreFooter } from '@/components/store/StoreFooter'
 import { HeroCarousel } from '@/components/store/HeroCarousel'
 import { StoreHeader } from '@/components/store/StoreHeader'
@@ -30,11 +30,7 @@ export default async function HomePage() {
           <h2 className="mb-8 text-center text-2xl font-extrabold uppercase tracking-wider text-brand-ink">
             Categorías destacadas
           </h2>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-            {categories.map((category) => (
-              <CategoryCard key={category.id} category={category} />
-            ))}
-          </div>
+          <FeaturedCategoriesCarousel categories={categories} />
         </div>
       </section>
 

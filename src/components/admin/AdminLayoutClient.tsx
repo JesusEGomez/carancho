@@ -41,6 +41,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   const navigation = [
     { href: '/admin', label: 'Dashboard' },
+    { href: '/admin/categorias', label: 'Categorías' },
     { href: '/admin/productos', label: 'Inventario' },
     { href: '/admin/productos/nuevo', label: 'Nuevo producto' },
   ]
@@ -115,9 +116,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col">
           <header className="flex items-center justify-between px-6 py-7 lg:px-8">
             <div>
-              <h1 className="text-4xl font-black tracking-tight text-brand-ink">Gestión de Productos</h1>
+              <h1 className="text-4xl font-black tracking-tight text-brand-ink">Gestión Comercial</h1>
             </div>
             <div className="flex gap-3">
+              <Link className="rounded-full border border-[#dfe5ef] bg-white px-5 py-3 text-sm font-black text-brand-ink" href="/admin/categorias/nueva">
+                Nueva Categoría
+              </Link>
               <Link className="rounded-full bg-brand-orange px-5 py-3 text-sm font-black text-white" href="/admin/productos/nuevo">
                 Nuevo Producto
               </Link>

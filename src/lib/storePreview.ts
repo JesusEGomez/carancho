@@ -30,7 +30,6 @@ const category = (
     slug,
     description,
     featured: true,
-    order: id,
     updatedAt: '2026-03-24T00:00:00.000Z',
     createdAt: '2026-03-24T00:00:00.000Z',
     heroImage: media(1000 + id, `${name} preview`, accent),

@@ -45,6 +45,12 @@ export default function AdminDashboardPage() {
 
             <div className="mt-6 grid gap-3">
               <Link
+                className="rounded-[18px] border border-[#dfe5ef] bg-white px-5 py-4 text-center text-sm font-black uppercase tracking-[0.12em] text-brand-ink"
+                href="/admin/categorias/nueva"
+              >
+                Crear categoría
+              </Link>
+              <Link
                 className="rounded-[18px] bg-brand-orange px-5 py-4 text-center text-sm font-black uppercase tracking-[0.12em] text-white"
                 href="/admin/productos/nuevo"
               >
@@ -55,6 +61,12 @@ export default function AdminDashboardPage() {
                 href="/admin/productos"
               >
                 Ver inventario
+              </Link>
+              <Link
+                className="rounded-[18px] border border-[#dfe5ef] bg-white px-5 py-4 text-center text-sm font-black uppercase tracking-[0.12em] text-brand-ink"
+                href="/admin/categorias"
+              >
+                Ver categorías
               </Link>
             </div>
           </article>
@@ -106,6 +118,7 @@ export default function AdminDashboardPage() {
                 categories.map((category) => (
                   <span key={category.id} className="rounded-full bg-[#f5f8fc] px-4 py-2 text-sm font-bold text-brand-ink">
                     {category.name}
+                    {category.parent ? ' / Subcategoría' : ''}
                   </span>
                 ))
               ) : (

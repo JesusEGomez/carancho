@@ -1,8 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAdmin } from '@/access/isAdmin'
+import { createUniqueSlugHook } from '@/hooks/createUniqueSlugHook'
 import { publishedOrAdmin } from '@/access/publishedOrAdmin'
-import { formatSlug } from '@/lib/formatSlug'
 
 export const Products: CollectionConfig = {
   slug: 'products',
@@ -18,27 +18,7 @@ export const Products: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [
-      ({ data }) => {
-        if (!data) {
-          return data
-        }
-
-        if (typeof data.name === 'string' && !data.slug) {
-          return {
-            ...data,
-            slug: formatSlug(data.name),
-          }
-        }
-
-        if (typeof data.slug === 'string') {
-          return {
-            ...data,
-            slug: formatSlug(data.slug),
-          }
-        }
-
-        return data
-      },
+      createUniqueSlugHook('products', 'producto'),
     ],
   },
   fields: [

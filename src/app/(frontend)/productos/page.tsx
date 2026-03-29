@@ -8,13 +8,51 @@ import { getCatalogData } from '@/lib/store'
 type Props = {
   searchParams: Promise<{
     categoria?: string
+    page?: string
     q?: string
   }>
 }
 
 export default async function ProductsPage({ searchParams }: Props) {
-  const { categoria, q } = await searchParams
-  const { categories, products, searchTerm, selectedCategorySlug } = await getCatalogData(q, categoria)
+  const { categoria, page, q } = await searchParams
+  const requestedPage = Number(page ?? '1')
+  const {
+    categories,
+    currentPage,
+    products,
+    searchTerm,
+    selectedCategory,
+    selectedParentCategory,
+    subcategories,
+    totalPages,
+    totalProducts,
+  } = await getCatalogData(q, categoria, requestedPage)
+  const selectedCategorySlug = selectedCategory?.slug ?? null
+  const pageTitle = selectedCategory?.name ?? 'Cañas de Pesca'
+  const safeCurrentPage = currentPage ?? 1
+  const subcategoryDescription = selectedParentCategory
+    ? `Filtrá dentro de ${selectedParentCategory.name}.`
+    : 'Elegí una categoría principal para ver sus subcategorías.'
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
+
+  const buildCatalogHref = (nextPage?: number) => {
+    const params = new URLSearchParams()
+
+    if (selectedCategorySlug) {
+      params.set('categoria', selectedCategorySlug)
+    }
+
+    if (searchTerm) {
+      params.set('q', searchTerm)
+    }
+
+    if (nextPage && nextPage > 1) {
+      params.set('page', String(nextPage))
+    }
+
+    const query = params.toString()
+    return query ? `/productos?${query}` : '/productos'
+  }
 
   return (
     <div className="min-h-screen bg-[#fbf7f1]">
@@ -27,10 +65,16 @@ export default async function ProductsPage({ searchParams }: Props) {
           </Link>
           <span>/</span>
           <span className="text-brand-orange">Pesca</span>
-          {selectedCategorySlug ? (
+          {selectedParentCategory ? (
             <>
               <span>/</span>
-              <span className="text-brand-ink">{categories.find((item) => item.slug === selectedCategorySlug)?.name}</span>
+              <span className="text-brand-ink">{selectedParentCategory.name}</span>
+            </>
+          ) : null}
+          {selectedCategory?.parent ? (
+            <>
+              <span>/</span>
+              <span className="text-brand-ink">{selectedCategory.name}</span>
             </>
           ) : null}
         </nav>
@@ -79,12 +123,23 @@ export default async function ProductsPage({ searchParams }: Props) {
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Subcategorías</p>
               <div className="mt-4 space-y-2 text-sm text-slate-500">
-                {['Telescópicas', 'Enchufables', 'Grafito', 'Fibra de vidrio'].map((item) => (
-                  <label key={item} className="flex items-center gap-3">
-                    <input className="rounded border-slate-300" type="checkbox" />
-                    <span>{item}</span>
-                  </label>
-                ))}
+                {subcategories.length ? (
+                  subcategories.map((item) => (
+                    <Link
+                      key={item.id}
+                      className={`flex items-center justify-between rounded-[14px] px-4 py-3 text-sm font-bold ${
+                        item.slug === selectedCategorySlug
+                          ? 'bg-brand-orange text-white shadow-[0_12px_22px_rgba(240,90,25,0.24)]'
+                          : 'bg-white text-slate-600'
+                      }`}
+                      href={`/productos?categoria=${item.slug}`}
+                    >
+                      <span>{item.name}</span>
+                    </Link>
+                  ))
+                ) : (
+                  <p className="rounded-[14px] bg-white px-4 py-3 text-sm text-slate-500">{subcategoryDescription}</p>
+                )}
               </div>
             </div>
           </aside>
@@ -92,9 +147,10 @@ export default async function ProductsPage({ searchParams }: Props) {
           <section>
             <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-4xl font-black tracking-tight text-brand-ink">
-                  {categories.find((item) => item.slug === selectedCategorySlug)?.name ?? 'Cañas de Pesca'}
-                </h1>
+                <h1 className="text-4xl font-black tracking-tight text-brand-ink">{pageTitle}</h1>
+                <p className="mt-2 text-sm text-slate-500">
+                  {totalProducts} producto{totalProducts === 1 ? '' : 's'} encontrados
+                </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <form action="/productos" className="flex items-center gap-2">
@@ -117,23 +173,76 @@ export default async function ProductsPage({ searchParams }: Props) {
             </div>
 
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+              {products.length ? (
+                products.map((product) => <ProductCard key={product.id} product={product} />)
+              ) : (
+                <div className="rounded-[28px] border border-slate-200 bg-white p-8 md:col-span-2 xl:col-span-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Sin resultados</p>
+                  <h2 className="mt-3 text-2xl font-black text-brand-ink">
+                    {selectedCategory
+                      ? `No hay productos cargados en ${selectedCategory.name}.`
+                      : 'No encontramos productos para esta búsqueda.'}
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
+                    {selectedCategory
+                      ? 'Probá con otra subcategoría o volvé a ver el catálogo completo para seguir explorando.'
+                      : 'Probá limpiando la búsqueda o volviendo al catálogo completo.'}
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Link
+                      className="rounded-full bg-brand-orange px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
+                      href="/productos"
+                    >
+                      Ver todo el catálogo
+                    </Link>
+                    {searchTerm ? (
+                      <Link
+                        className="rounded-full border border-slate-200 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-brand-ink"
+                        href={selectedCategorySlug ? `/productos?categoria=${selectedCategorySlug}` : '/productos'}
+                      >
+                        Quitar búsqueda
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="mt-8 flex items-center justify-center gap-2">
-              {['‹', '1', '2', '3', '›'].map((item) => (
-                <span
-                  key={item}
-                  className={`flex h-9 w-9 items-center justify-center rounded-[10px] text-sm font-black ${
-                    item === '1' ? 'bg-brand-orange text-white' : 'bg-white text-slate-400'
+            {totalPages > 1 ? (
+              <div className="mt-8 flex items-center justify-center gap-2">
+                <Link
+                  aria-disabled={safeCurrentPage === 1}
+                  className={`flex h-9 min-w-9 items-center justify-center rounded-[10px] px-3 text-sm font-black ${
+                    safeCurrentPage === 1 ? 'pointer-events-none bg-slate-100 text-slate-300' : 'bg-white text-slate-500'
                   }`}
+                  href={buildCatalogHref(safeCurrentPage - 1)}
                 >
-                  {item}
-                </span>
-              ))}
-            </div>
+                  ‹
+                </Link>
+                {pageNumbers.map((pageNumber) => (
+                  <Link
+                    key={pageNumber}
+                    className={`flex h-9 min-w-9 items-center justify-center rounded-[10px] px-3 text-sm font-black ${
+                      pageNumber === safeCurrentPage ? 'bg-brand-orange text-white' : 'bg-white text-slate-400'
+                    }`}
+                    href={buildCatalogHref(pageNumber)}
+                  >
+                    {pageNumber}
+                  </Link>
+                ))}
+                <Link
+                  aria-disabled={safeCurrentPage === totalPages}
+                  className={`flex h-9 min-w-9 items-center justify-center rounded-[10px] px-3 text-sm font-black ${
+                    safeCurrentPage === totalPages
+                      ? 'pointer-events-none bg-slate-100 text-slate-300'
+                      : 'bg-white text-slate-500'
+                  }`}
+                  href={buildCatalogHref(safeCurrentPage + 1)}
+                >
+                  ›
+                </Link>
+              </div>
+            ) : null}
           </section>
         </div>
       </div>

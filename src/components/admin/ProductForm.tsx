@@ -15,7 +15,6 @@ import {
   AdminTextarea,
 } from '@/components/admin/form-primitives'
 import { useCategories, useUpsertProduct } from '@/hooks/useAdminCatalog'
-import { formatSlug } from '@/lib/formatSlug'
 import type { MediaRecord } from '@/services/adminApi'
 
 const MAX_IMAGE_SIZE_MB = 8
@@ -34,25 +33,20 @@ const specificationSchema = z.object({
 const productFormSchema = z
   .object({
     badges: z.array(z.enum(['nuevo', 'oferta', 'destacado'])).default([]),
-    categoryId: z.coerce.number().min(1, 'Selecciona una categoría'),
     compareAtPrice: z.union([z.literal(''), z.coerce.number().min(0, 'El precio comparado debe ser positivo')]),
     description: z.string().trim().min(10, 'La descripción debe tener al menos 10 caracteres'),
     features: z.array(featureSchema).default([]),
     isFeatured: z.boolean().default(false),
     name: z.string().trim().min(3, 'El nombre debe tener al menos 3 caracteres'),
+    parentCategoryId: z.coerce.number().min(1, 'Selecciona una categoría'),
     price: z.coerce.number().min(0, 'El precio debe ser mayor o igual a 0'),
     shortDescription: z.string().trim().min(10, 'La descripción corta debe tener al menos 10 caracteres'),
     showFeatures: z.boolean().default(false),
     showSpecifications: z.boolean().default(false),
-    slug: z
-      .string()
-      .trim()
-      .min(3, 'El slug debe tener al menos 3 caracteres')
-      .transform((value) => formatSlug(value))
-      .refine((value) => value.length >= 3, 'El slug debe contener letras o números válidos'),
     specifications: z.array(specificationSchema).default([]),
     status: z.enum(['published', 'draft']),
     stock: z.coerce.number().min(0, 'El stock debe ser mayor o igual a 0'),
+    subcategoryId: z.coerce.number().min(1, 'Selecciona una subcategoría'),
   })
   .superRefine((values, context) => {
     if (values.compareAtPrice !== '' && Number(values.compareAtPrice) < values.price) {
@@ -103,7 +97,6 @@ const emptySpecification = { label: '', value: '' }
 
 const defaultValues: ProductFormData = {
   badges: [],
-  categoryId: 0,
   compareAtPrice: '',
   description: '',
   featuredImage: null,
@@ -111,14 +104,15 @@ const defaultValues: ProductFormData = {
   gallery: [],
   isFeatured: true,
   name: '',
+  parentCategoryId: 0,
   price: 0,
   shortDescription: '',
   showFeatures: false,
   showSpecifications: false,
-  slug: '',
   specifications: [],
   status: 'published',
   stock: 0,
+  subcategoryId: 0,
 }
 
 function getFieldArrayError<TFieldName extends 'features' | 'specifications'>(
@@ -223,12 +217,24 @@ export function ProductForm({ initialData }: ProductFormProps) {
   }, [initialData, reset])
 
   const categories = categoriesQuery.data?.docs ?? []
+  const parentCategories = useMemo(
+    () => categories.filter((category) => !category.parent),
+    [categories],
+  )
   const title = initialData ? 'Editar producto' : 'Nuevo producto'
   const error = categoriesQuery.error?.message ?? upsertProductMutation.error?.message ?? null
   const selectedBadges = useWatch({
     control,
     name: 'badges',
   }) ?? []
+  const selectedParentCategoryId = useWatch({
+    control,
+    name: 'parentCategoryId',
+  })
+  const selectedSubcategoryId = useWatch({
+    control,
+    name: 'subcategoryId',
+  })
   const showFeatures = useWatch({
     control,
     name: 'showFeatures',
@@ -237,6 +243,21 @@ export function ProductForm({ initialData }: ProductFormProps) {
     control,
     name: 'showSpecifications',
   })
+  const availableSubcategories = useMemo(
+    () =>
+      categories.filter((category) => {
+        const parentId =
+          typeof category.parent === 'number'
+            ? category.parent
+            : category.parent && typeof category.parent === 'object'
+              ? category.parent.id
+              : null
+
+        return parentId === selectedParentCategoryId
+      }),
+    [categories, selectedParentCategoryId],
+  )
+  const selectedParentCategory = parentCategories.find((category) => category.id === selectedParentCategoryId)
 
   const nextGalleryNames = useMemo(() => galleryFiles.map((file) => file.name), [galleryFiles])
   const featuresError = getFieldArrayError(errors, 'features')
@@ -275,7 +296,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
               id: initialData?.id ? String(initialData.id) : null,
               payload: {
                 badges: values.badges,
-                category: values.categoryId,
+                category: values.subcategoryId,
                 compareAtPrice:
                   values.compareAtPrice === '' || values.compareAtPrice === undefined
                     ? null
@@ -289,7 +310,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 shortDescription: values.shortDescription.trim(),
                 showFeatures: values.showFeatures,
                 showSpecifications: values.showSpecifications,
-                slug: values.slug,
                 specifications: values.showSpecifications
                   ? values.specifications.map((item) => ({
                       label: item.label.trim(),
@@ -311,20 +331,52 @@ export function ProductForm({ initialData }: ProductFormProps) {
             <AdminInput {...register('name')} />
           </AdminField>
 
-          <AdminField error={errors.slug?.message} label="Slug" required>
-            <AdminInput {...register('slug')} />
-          </AdminField>
-
-          <AdminField error={errors.categoryId?.message} label="Categoría" required>
-            <AdminSelect {...register('categoryId')}>
+          <AdminField error={errors.parentCategoryId?.message} label="Categoría" required>
+            <AdminSelect
+              {...register('parentCategoryId')}
+              onChange={(event) => {
+                const value = Number(event.target.value)
+                setValue('parentCategoryId', value, { shouldDirty: true, shouldValidate: true })
+                setValue('subcategoryId', 0, { shouldDirty: true, shouldValidate: true })
+              }}
+              value={selectedParentCategoryId}
+            >
               <option value={0}>Seleccionar categoría</option>
-              {categories.map((category) => (
+              {parentCategories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
               ))}
             </AdminSelect>
           </AdminField>
+
+          <div className="grid gap-2">
+            <AdminField error={errors.subcategoryId?.message} label="Subcategoría" required>
+              <AdminSelect
+                {...register('subcategoryId')}
+                disabled={!selectedParentCategoryId}
+                value={selectedSubcategoryId}
+              >
+                <option value={0}>
+                  {selectedParentCategoryId ? 'Seleccionar subcategoría' : 'Primero elegí una categoría'}
+                </option>
+                {availableSubcategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </AdminSelect>
+            </AdminField>
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-xs text-slate-500">
+                {selectedParentCategoryId
+                  ? availableSubcategories.length
+                    ? `Subcategorías disponibles para ${selectedParentCategory?.name}.`
+                    : `Todavía no hay subcategorías para ${selectedParentCategory?.name}. Creala desde Categorías.`
+                  : 'Elegí una categoría para ver sus subcategorías disponibles.'}
+              </div>
+            </div>
+          </div>
 
           <AdminField label="Estado" required>
             <AdminSelect {...register('status')}>
