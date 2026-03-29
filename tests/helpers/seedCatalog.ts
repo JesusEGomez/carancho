@@ -51,7 +51,6 @@ export async function seedCatalog() {
       featured: true,
       heroImage: media.id,
       name: 'Canas y Reels',
-      order: 0,
       slug: 'canas-y-reels',
     },
     draft: false,

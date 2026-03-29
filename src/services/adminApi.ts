@@ -6,6 +6,10 @@ export type CategoryOption = {
   id: number
   name: string
   slug: string
+  description?: string | null
+  featured?: boolean | null
+  heroImage?: number | MediaRecord | null
+  parent?: CategoryOption | number | null
 }
 
 export type MediaRecord = {
@@ -79,6 +83,11 @@ export async function fetchProduct(id: string) {
   return response.data
 }
 
+export async function fetchCategory(id: string) {
+  const response = await api.get<CategoryOption>(`/categories/${id}?depth=1`)
+  return response.data
+}
+
 export async function saveProduct(id: string | null, payload: Record<string, unknown>) {
   const response = id
     ? await api.patch<ProductRecord>(`/products/${id}`, payload)
@@ -88,11 +97,14 @@ export async function saveProduct(id: string | null, payload: Record<string, unk
 }
 
 export async function fetchCategories() {
-  const response = await api.get<{ docs: CategoryOption[] }>('/categories?limit=100&sort=order')
+  const response = await api.get<{ docs: CategoryOption[] }>('/categories?depth=1&limit=200&sort=name')
   return response.data
 }
 
-export async function saveCategory(payload: Record<string, unknown>) {
-  const response = await api.post<CategoryOption>('/categories', payload)
+export async function saveCategory(id: string | null, payload: Record<string, unknown>) {
+  const response = id
+    ? await api.patch<CategoryOption>(`/categories/${id}`, payload)
+    : await api.post<CategoryOption>('/categories', payload)
+
   return response.data
 }

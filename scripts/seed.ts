@@ -172,7 +172,6 @@ async function main() {
       featured: category.featured ?? true,
       heroImage: categoryMediaBySlug.get(category.slug),
       name: category.name,
-      order: category.order ?? 0,
       slug: category.slug,
     }
 

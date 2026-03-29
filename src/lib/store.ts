@@ -9,8 +9,32 @@ export type ProductWithRelations = Product & {
   gallery?: Media[] | null
 }
 
+const CATALOG_PAGE_SIZE = 9
+
 const relation = <T>(value: number | T | null | undefined) =>
   (typeof value === 'object' && value !== null ? value : null) as T | null
+
+const getCategoryId = (category: Category | number | null | undefined) => {
+  if (typeof category === 'number') {
+    return category
+  }
+
+  if (category && typeof category === 'object') {
+    return category.id
+  }
+
+  return null
+}
+
+const getParentCategoryId = (category: Category | null | undefined) => {
+  if (!category?.parent) {
+    return category?.id ?? null
+  }
+
+  return getCategoryId(category.parent)
+}
+
+const isTopLevelCategory = (category: Category) => !relation<Category>(category.parent)
 
 const getPayloadSafely = async () => {
   try {
@@ -21,11 +45,11 @@ const getPayloadSafely = async () => {
   }
 }
 
-export async function getFeaturedCategories(limit = 3) {
+export async function getFeaturedCategories(limit?: number) {
   const payload = await getPayloadSafely()
 
   if (!payload) {
-    return previewCategories.slice(0, limit).map((category) => ({
+    return previewCategories.slice(0, limit ?? previewCategories.length).map((category) => ({
       ...category,
       heroImage: relation<Media>(category.heroImage),
     }))
@@ -35,13 +59,22 @@ export async function getFeaturedCategories(limit = 3) {
     const result = await payload.find({
       collection: 'categories',
       depth: 1,
-      limit,
+      limit: 24,
       overrideAccess: false,
-      sort: 'order',
+      sort: 'name',
       where: {
-        featured: {
-          equals: true,
-        },
+        and: [
+          {
+            featured: {
+              equals: true,
+            },
+          },
+          {
+            parent: {
+              exists: false,
+            },
+          },
+        ],
       },
     })
 
@@ -52,13 +85,13 @@ export async function getFeaturedCategories(limit = 3) {
         }))
       : previewCategories
 
-    return docs.slice(0, limit).map((category) => ({
+    return docs.slice(0, limit ?? docs.length).map((category) => ({
       ...category,
       heroImage: relation<Media>(category.heroImage),
     }))
   } catch (error) {
     console.error('Failed to load featured categories from Payload, using preview data.', error)
-    return previewCategories.slice(0, limit).map((category) => ({
+    return previewCategories.slice(0, limit ?? previewCategories.length).map((category) => ({
       ...category,
       heroImage: relation<Media>(category.heroImage),
     }))
@@ -93,19 +126,21 @@ export async function getFeaturedProducts(limit = 8) {
   }
 }
 
-export async function getCatalogData(search?: string, categorySlug?: string) {
+export async function getCatalogData(search?: string, categorySlug?: string, page = 1) {
   const where: Where = {}
+  const normalizedSearch = search?.trim() ?? ''
+  const currentPage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
 
-  if (search?.trim()) {
+  if (normalizedSearch) {
     where.or = [
       {
         name: {
-          contains: search.trim(),
+          contains: normalizedSearch,
         },
       },
       {
         shortDescription: {
-          contains: search.trim(),
+          contains: normalizedSearch,
         },
       },
     ]
@@ -116,7 +151,7 @@ export async function getCatalogData(search?: string, categorySlug?: string) {
     ? previewProducts.filter((product) => product.category.slug === previewSelectedCategory.slug)
     : previewProducts
   ).filter((product) => {
-    const term = search?.trim().toLowerCase()
+    const term = normalizedSearch.toLowerCase()
 
     if (!term) {
       return true
@@ -128,15 +163,29 @@ export async function getCatalogData(search?: string, categorySlug?: string) {
       product.shortDescription.toLowerCase().includes(term)
     )
   })
+  const fallbackTotalPages = Math.max(1, Math.ceil(fallbackProducts.length / CATALOG_PAGE_SIZE))
+  const fallbackPage = Math.min(currentPage, fallbackTotalPages)
+  const fallbackPageProducts = fallbackProducts.slice(
+    (fallbackPage - 1) * CATALOG_PAGE_SIZE,
+    fallbackPage * CATALOG_PAGE_SIZE,
+  )
 
   const payload = await getPayloadSafely()
 
   if (!payload) {
+    const parentCategories = previewCategories
+    const selectedCategory = previewCategories.find((category) => category.slug === categorySlug) ?? null
+
     return {
-      categories: previewCategories,
-      products: fallbackProducts,
-      selectedCategorySlug: previewSelectedCategory?.slug ?? null,
-      searchTerm: search?.trim() ?? '',
+      categories: parentCategories,
+      currentPage: fallbackPage,
+      products: fallbackPageProducts,
+      selectedCategory: selectedCategory ?? previewSelectedCategory ?? null,
+      selectedParentCategory: selectedCategory ?? previewSelectedCategory ?? null,
+      searchTerm: normalizedSearch,
+      subcategories: [],
+      totalPages: fallbackTotalPages,
+      totalProducts: fallbackProducts.length,
     }
   }
 
@@ -146,24 +195,7 @@ export async function getCatalogData(search?: string, categorySlug?: string) {
       depth: 1,
       limit: 50,
       overrideAccess: false,
-      sort: 'order',
-    })
-
-    const selectedCategory = categoriesResult.docs.find((category) => category.slug === categorySlug)
-
-    if (selectedCategory) {
-      where.category = {
-        equals: selectedCategory.id,
-      }
-    }
-
-    const productsResult = await payload.find({
-      collection: 'products',
-      depth: 2,
-      limit: 24,
-      overrideAccess: false,
-      sort: '-createdAt',
-      where,
+      sort: 'name',
     })
 
     const categories = categoriesResult.docs.length
@@ -173,19 +205,60 @@ export async function getCatalogData(search?: string, categorySlug?: string) {
         }))
       : previewCategories
 
+    const topLevelCategories = categories.filter(isTopLevelCategory)
+    const selectedCategory = categories.find((category) => category.slug === categorySlug) ?? null
+    const selectedParentCategory = selectedCategory
+      ? categories.find((category) => category.id === getParentCategoryId(selectedCategory)) ?? selectedCategory
+      : null
+    const selectedSubcategories = selectedParentCategory
+      ? categories.filter((category) => getParentCategoryId(category) === selectedParentCategory.id && category.id !== selectedParentCategory.id)
+      : []
+
+    if (selectedCategory) {
+      if (selectedCategory.parent) {
+        where.category = {
+          equals: selectedCategory.id,
+        }
+      } else {
+        where.category = {
+          in: [selectedCategory.id, ...selectedSubcategories.map((category) => category.id)],
+        }
+      }
+    }
+
+    const productsResult = await payload.find({
+      collection: 'products',
+      depth: 2,
+      limit: CATALOG_PAGE_SIZE,
+      overrideAccess: false,
+      page: currentPage,
+      sort: '-createdAt',
+      where,
+    })
+
     return {
-      categories,
-      products: productsResult.docs.length ? productsResult.docs.map(normalizeProduct) : fallbackProducts,
-      selectedCategorySlug: selectedCategory?.slug ?? previewSelectedCategory?.slug ?? null,
-      searchTerm: search?.trim() ?? '',
+      categories: topLevelCategories,
+      currentPage: productsResult.page,
+      products: productsResult.docs.map(normalizeProduct),
+      selectedCategory: selectedCategory ?? previewSelectedCategory ?? null,
+      selectedParentCategory,
+      searchTerm: normalizedSearch,
+      subcategories: selectedSubcategories,
+      totalPages: productsResult.totalPages,
+      totalProducts: productsResult.totalDocs,
     }
   } catch (error) {
     console.error('Failed to load catalog data from Payload, using preview data.', error)
     return {
       categories: previewCategories,
-      products: fallbackProducts,
-      selectedCategorySlug: previewSelectedCategory?.slug ?? null,
-      searchTerm: search?.trim() ?? '',
+      currentPage: fallbackPage,
+      products: fallbackPageProducts,
+      selectedCategory: previewSelectedCategory ?? null,
+      selectedParentCategory: previewSelectedCategory ?? null,
+      searchTerm: normalizedSearch,
+      subcategories: [],
+      totalPages: fallbackTotalPages,
+      totalProducts: fallbackProducts.length,
     }
   }
 }

@@ -4,7 +4,7 @@ import { use } from 'react'
 
 import { ProductForm, type ProductFormData } from '@/components/admin/ProductForm'
 import { useProduct } from '@/hooks/useAdminCatalog'
-import type { MediaRecord } from '@/services/adminApi'
+import type { CategoryOption, MediaRecord } from '@/services/adminApi'
 
 type Props = {
   params: Promise<{
@@ -33,10 +33,12 @@ export default function EditProductPage({ params }: Props) {
     ) ?? []
   const gallery = (product.gallery ?? []).filter((image): image is MediaRecord => typeof image === 'object' && image !== null)
   const featuredImage = typeof product.featuredImage === 'object' && product.featuredImage ? product.featuredImage : null
+  const productCategory = typeof product.category === 'object' ? product.category : null
+  const parentCategoryId = getParentCategoryId(productCategory ?? product.category)
+  const subcategoryId = productCategory?.parent ? productCategory.id : 0
 
   const initialData: ProductFormData = {
     badges: product.badges ?? [],
-    categoryId: typeof product.category === 'object' ? product.category.id : product.category,
     compareAtPrice: product.compareAtPrice ?? '',
     description: product.description,
     featuredImage,
@@ -46,15 +48,32 @@ export default function EditProductPage({ params }: Props) {
     id: product.id,
     isFeatured: product.isFeatured,
     name: product.name,
+    parentCategoryId: parentCategoryId ?? 0,
     price: product.price,
     shortDescription: product.shortDescription,
     showFeatures: product.showFeatures ?? features.length > 0,
     showSpecifications: product.showSpecifications ?? specifications.length > 0,
-    slug: product.slug,
     specifications: specifications.map((item) => ({ label: item.label, value: item.value })),
     status: product.status,
     stock: product.stock,
+    subcategoryId,
   }
 
   return <ProductForm initialData={initialData} />
+}
+
+function getParentCategoryId(category: CategoryOption | number | null | undefined) {
+  if (!category || typeof category === 'number') {
+    return category ?? null
+  }
+
+  if (!category.parent) {
+    return category.id
+  }
+
+  if (typeof category.parent === 'number') {
+    return category.parent
+  }
+
+  return category.parent.id
 }
