@@ -16,6 +16,8 @@ type MediaLike = {
   url?: string | null
 }
 
+const localDatabaseHosts = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', 'db', 'postgres'])
+
 Object.assign(process.env, {
   NODE_ENV: 'production',
   PAYLOAD_DISABLE_BLOB_STORAGE: 'true',
@@ -31,6 +33,35 @@ const seedAdmin = {
 const relation = <T>(value: number | T | null | undefined) =>
   (typeof value === 'object' && value !== null ? value : null) as T | null
 const fallbackMediaPath = path.resolve(process.cwd(), 'public/images/heroes/carancho-home-hero.png')
+
+function isLocalDatabaseUrl(databaseURL: string) {
+  try {
+    const { hostname } = new URL(databaseURL)
+    return localDatabaseHosts.has(hostname)
+  } catch {
+    return false
+  }
+}
+
+function assertSeedEnvironment() {
+  if (process.env.PAYLOAD_FORCE_SEED === 'true') {
+    return
+  }
+
+  const isVercelEnvironment = process.env.VERCEL === '1' || typeof process.env.VERCEL_ENV === 'string'
+
+  if (isVercelEnvironment || process.env.CI === 'true') {
+    throw new Error(
+      'Seed script is disabled on Vercel and CI environments. Run it only in local development or set PAYLOAD_FORCE_SEED=true for an intentional override.',
+    )
+  }
+
+  if (!process.env.DATABASE_URL || !isLocalDatabaseUrl(process.env.DATABASE_URL)) {
+    throw new Error(
+      'Seed script only runs against a local database by default. Set PAYLOAD_FORCE_SEED=true only if you intentionally need to target a remote database.',
+    )
+  }
+}
 
 async function upsertMedia(payload: Awaited<ReturnType<typeof getPayload>>, input: SeedMediaInput) {
   const existing = await payload.find({
@@ -100,6 +131,8 @@ async function seedAdminUser(payload: Awaited<ReturnType<typeof getPayload>>) {
 }
 
 async function main() {
+  assertSeedEnvironment()
+
   const { default: config } = await import('../src/payload.config.js')
   const payload = await getPayload({ config })
 
