@@ -2,39 +2,83 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useFieldArray, useForm, useWatch, type Resolver } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch, type FieldErrors, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
+import {
+  AdminAlert,
+  AdminField,
+  AdminFieldError,
+  AdminInput,
+  AdminSelect,
+  AdminTextarea,
+} from '@/components/admin/form-primitives'
 import { useCategories, useUpsertProduct } from '@/hooks/useAdminCatalog'
+import { formatSlug } from '@/lib/formatSlug'
 import type { MediaRecord } from '@/services/adminApi'
 
-const specificationSchema = z.object({
-  label: z.string(),
-  value: z.string(),
-})
+const MAX_IMAGE_SIZE_MB = 8
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024
+const MAX_GALLERY_IMAGES = 8
 
 const featureSchema = z.object({
-  label: z.string(),
+  label: z.string().trim().min(1, 'La característica no puede estar vacía'),
 })
 
-const productFormSchema = z.object({
-  badges: z.array(z.enum(['nuevo', 'oferta', 'destacado'])).default([]),
-  categoryId: z.coerce.number().min(1, 'Selecciona una categoria'),
-  compareAtPrice: z.union([z.literal(''), z.coerce.number().min(0)]).optional(),
-  description: z.string().min(10, 'La descripcion es obligatoria'),
-  features: z.array(featureSchema).default([]),
-  isFeatured: z.boolean().default(true),
-  name: z.string().min(3, 'El nombre es obligatorio'),
-  price: z.coerce.number().min(0, 'Precio invalido'),
-  shortDescription: z.string().min(10, 'La descripcion corta es obligatoria'),
-  showFeatures: z.boolean().default(false),
-  showSpecifications: z.boolean().default(false),
-  slug: z.string().min(3, 'El slug es obligatorio'),
-  specifications: z.array(specificationSchema).default([]),
-  status: z.enum(['published', 'draft']),
-  stock: z.coerce.number().min(0, 'Stock invalido'),
+const specificationSchema = z.object({
+  label: z.string().trim().min(1, 'El título es obligatorio'),
+  value: z.string().trim().min(1, 'El valor es obligatorio'),
 })
+
+const productFormSchema = z
+  .object({
+    badges: z.array(z.enum(['nuevo', 'oferta', 'destacado'])).default([]),
+    categoryId: z.coerce.number().min(1, 'Selecciona una categoría'),
+    compareAtPrice: z.union([z.literal(''), z.coerce.number().min(0, 'El precio comparado debe ser positivo')]),
+    description: z.string().trim().min(10, 'La descripción debe tener al menos 10 caracteres'),
+    features: z.array(featureSchema).default([]),
+    isFeatured: z.boolean().default(false),
+    name: z.string().trim().min(3, 'El nombre debe tener al menos 3 caracteres'),
+    price: z.coerce.number().min(0, 'El precio debe ser mayor o igual a 0'),
+    shortDescription: z.string().trim().min(10, 'La descripción corta debe tener al menos 10 caracteres'),
+    showFeatures: z.boolean().default(false),
+    showSpecifications: z.boolean().default(false),
+    slug: z
+      .string()
+      .trim()
+      .min(3, 'El slug debe tener al menos 3 caracteres')
+      .transform((value) => formatSlug(value))
+      .refine((value) => value.length >= 3, 'El slug debe contener letras o números válidos'),
+    specifications: z.array(specificationSchema).default([]),
+    status: z.enum(['published', 'draft']),
+    stock: z.coerce.number().min(0, 'El stock debe ser mayor o igual a 0'),
+  })
+  .superRefine((values, context) => {
+    if (values.compareAtPrice !== '' && Number(values.compareAtPrice) < values.price) {
+      context.addIssue({
+        code: 'custom',
+        message: 'El precio comparado no puede ser menor al precio actual',
+        path: ['compareAtPrice'],
+      })
+    }
+
+    if (values.showFeatures && values.features.length === 0) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Agrega al menos una característica para mostrar esta sección',
+        path: ['features'],
+      })
+    }
+
+    if (values.showSpecifications && values.specifications.length === 0) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Agrega al menos una especificación para mostrar esta sección',
+        path: ['specifications'],
+      })
+    }
+  })
 
 export type ProductFormValues = z.infer<typeof productFormSchema>
 
@@ -47,6 +91,11 @@ export type ProductFormData = ProductFormValues & {
 
 type ProductFormProps = {
   initialData?: ProductFormData
+}
+
+type UploadErrors = {
+  featuredImage?: string
+  gallery?: string
 }
 
 const emptyFeature = { label: '' }
@@ -72,18 +121,66 @@ const defaultValues: ProductFormData = {
   stock: 0,
 }
 
-const filterFeatures = (features: ProductFormValues['features']) =>
-  features
-    .map((feature) => ({ label: feature.label.trim() }))
-    .filter((feature) => feature.label.length > 0)
+function getFieldArrayError<TFieldName extends 'features' | 'specifications'>(
+  errors: FieldErrors<ProductFormValues>,
+  fieldName: TFieldName,
+) {
+  const fieldError = errors[fieldName]
 
-const filterSpecifications = (specifications: ProductFormValues['specifications']) =>
-  specifications
-    .map((specification) => ({
-      label: specification.label.trim(),
-      value: specification.value.trim(),
-    }))
-    .filter((specification) => specification.label.length > 0 && specification.value.length > 0)
+  return fieldError && 'message' in fieldError && typeof fieldError.message === 'string'
+    ? fieldError.message
+    : undefined
+}
+
+function validateImageFile(file: File) {
+  if (!file.type.startsWith('image/')) {
+    return 'Solo se permiten archivos de imagen'
+  }
+
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    return `Cada imagen debe pesar menos de ${MAX_IMAGE_SIZE_MB}MB`
+  }
+
+  return null
+}
+
+function validateUploads({
+  existingFeaturedImage,
+  existingGalleryCount,
+  featuredFile,
+  galleryFiles,
+}: {
+  existingFeaturedImage: MediaRecord | null | undefined
+  existingGalleryCount: number
+  featuredFile: File | null
+  galleryFiles: File[]
+}) {
+  const errors: UploadErrors = {}
+
+  if (!existingFeaturedImage && !featuredFile) {
+    errors.featuredImage = 'La imagen principal es obligatoria'
+  }
+
+  if (featuredFile) {
+    const featuredError = validateImageFile(featuredFile)
+
+    if (featuredError) {
+      errors.featuredImage = featuredError
+    }
+  }
+
+  if (existingGalleryCount + galleryFiles.length > MAX_GALLERY_IMAGES) {
+    errors.gallery = `La galería admite hasta ${MAX_GALLERY_IMAGES} imágenes`
+  } else {
+    const invalidGalleryFile = galleryFiles.map(validateImageFile).find(Boolean)
+
+    if (invalidGalleryFile) {
+      errors.gallery = invalidGalleryFile
+    }
+  }
+
+  return errors
+}
 
 export function ProductForm({ initialData }: ProductFormProps) {
   const router = useRouter()
@@ -92,6 +189,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const [featuredFile, setFeaturedFile] = useState<File | null>(null)
   const [galleryFiles, setGalleryFiles] = useState<File[]>([])
   const [existingGallery, setExistingGallery] = useState<MediaRecord[]>(initialData?.gallery ?? [])
+  const [uploadErrors, setUploadErrors] = useState<UploadErrors>({})
   const {
     control,
     formState: { errors },
@@ -120,6 +218,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
       setExistingGallery(initialData.gallery ?? [])
       setFeaturedFile(null)
       setGalleryFiles([])
+      setUploadErrors({})
     }
   }, [initialData, reset])
 
@@ -140,6 +239,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
   })
 
   const nextGalleryNames = useMemo(() => galleryFiles.map((file) => file.name), [galleryFiles])
+  const featuresError = getFieldArrayError(errors, 'features')
+  const specificationsError = getFieldArrayError(errors, 'specifications')
 
   return (
     <section className="surface-card max-w-5xl p-8">
@@ -151,8 +252,18 @@ export function ProductForm({ initialData }: ProductFormProps) {
       <form
         className="grid gap-6"
         onSubmit={handleSubmit((values) => {
-          const nextFeatures = values.showFeatures ? filterFeatures(values.features) : []
-          const nextSpecifications = values.showSpecifications ? filterSpecifications(values.specifications) : []
+          const nextUploadErrors = validateUploads({
+            existingFeaturedImage: initialData?.featuredImage,
+            existingGalleryCount: existingGallery.length,
+            featuredFile,
+            galleryFiles,
+          })
+
+          setUploadErrors(nextUploadErrors)
+
+          if (Object.keys(nextUploadErrors).length > 0) {
+            return
+          }
 
           void upsertProductMutation
             .mutateAsync({
@@ -169,17 +280,22 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   values.compareAtPrice === '' || values.compareAtPrice === undefined
                     ? null
                     : Number(values.compareAtPrice),
-                description: values.description,
+                description: values.description.trim(),
                 featuredImage: initialData?.featuredImageId ?? null,
-                features: nextFeatures,
+                features: values.showFeatures ? values.features.map((feature) => ({ label: feature.label.trim() })) : [],
                 isFeatured: values.isFeatured,
-                name: values.name,
+                name: values.name.trim(),
                 price: values.price,
-                shortDescription: values.shortDescription,
-                showFeatures: values.showFeatures && nextFeatures.length > 0,
-                showSpecifications: values.showSpecifications && nextSpecifications.length > 0,
+                shortDescription: values.shortDescription.trim(),
+                showFeatures: values.showFeatures,
+                showSpecifications: values.showSpecifications,
                 slug: values.slug,
-                specifications: nextSpecifications,
+                specifications: values.showSpecifications
+                  ? values.specifications.map((item) => ({
+                      label: item.label.trim(),
+                      value: item.value.trim(),
+                    }))
+                  : [],
                 status: values.status,
                 stock: values.stock,
               },
@@ -191,91 +307,58 @@ export function ProductForm({ initialData }: ProductFormProps) {
         })}
       >
         <div className="grid gap-6 md:grid-cols-2">
-          <label className="grid gap-2 text-sm font-bold text-brand-ink">
-            Nombre
-            <input
-              className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-              {...register('name')}
-            />
-            {errors.name ? <span className="text-xs font-semibold text-red-600">{errors.name.message}</span> : null}
-          </label>
+          <AdminField error={errors.name?.message} label="Nombre" required>
+            <AdminInput {...register('name')} />
+          </AdminField>
 
-          <label className="grid gap-2 text-sm font-bold text-brand-ink">
-            Slug
-            <input
-              className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-              {...register('slug')}
-            />
-            {errors.slug ? <span className="text-xs font-semibold text-red-600">{errors.slug.message}</span> : null}
-          </label>
+          <AdminField error={errors.slug?.message} label="Slug" required>
+            <AdminInput {...register('slug')} />
+          </AdminField>
 
-          <label className="grid gap-2 text-sm font-bold text-brand-ink">
-            Categoria
-            <select
-              className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-              {...register('categoryId')}
-            >
-              <option value={0}>Seleccionar categoria</option>
+          <AdminField error={errors.categoryId?.message} label="Categoría" required>
+            <AdminSelect {...register('categoryId')}>
+              <option value={0}>Seleccionar categoría</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
               ))}
-            </select>
-            {errors.categoryId ? <span className="text-xs font-semibold text-red-600">{errors.categoryId.message}</span> : null}
-          </label>
+            </AdminSelect>
+          </AdminField>
 
-          <label className="grid gap-2 text-sm font-bold text-brand-ink">
-            Estado
-            <select
-              className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-              {...register('status')}
-            >
+          <AdminField label="Estado" required>
+            <AdminSelect {...register('status')}>
               <option value="published">Publicado</option>
               <option value="draft">Borrador</option>
-            </select>
-          </label>
+            </AdminSelect>
+          </AdminField>
 
-          <label className="grid gap-2 text-sm font-bold text-brand-ink">
-            Precio
-            <input
-              className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-              min={0}
-              type="number"
-              {...register('price')}
-            />
-          </label>
+          <AdminField error={errors.price?.message} label="Precio" required>
+            <AdminInput min={0} type="number" {...register('price')} />
+          </AdminField>
 
-          <label className="grid gap-2 text-sm font-bold text-brand-ink">
-            Precio comparado
-            <input
-              className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-              min={0}
-              type="number"
-              {...register('compareAtPrice')}
-            />
-          </label>
+          <AdminField error={errors.compareAtPrice?.message} label="Precio comparado">
+            <AdminInput min={0} type="number" {...register('compareAtPrice')} />
+          </AdminField>
 
-          <label className="grid gap-2 text-sm font-bold text-brand-ink">
-            Stock
-            <input
-              className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-              min={0}
-              type="number"
-              {...register('stock')}
-            />
-          </label>
+          <AdminField error={errors.stock?.message} label="Stock" required>
+            <AdminInput min={0} type="number" {...register('stock')} />
+          </AdminField>
 
-          <label className="grid gap-2 text-sm font-bold text-brand-ink">
-            Imagen principal
-            <input
+          <AdminField error={uploadErrors.featuredImage} label="Imagen principal" required>
+            <AdminInput
               accept="image/*"
-              className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-medium"
-              onChange={(event) => setFeaturedFile(event.target.files?.[0] ?? null)}
+              className="border-dashed border-slate-300 bg-slate-50 text-sm"
+              onChange={(event) => {
+                setFeaturedFile(event.target.files?.[0] ?? null)
+                setUploadErrors((current) => ({ ...current, featuredImage: undefined }))
+              }}
               type="file"
             />
-            {featuredFile ? <span className="text-xs font-medium text-slate-500">Nueva imagen: {featuredFile.name}</span> : null}
-          </label>
+            {featuredFile ? (
+              <span className="text-xs font-medium text-slate-500">Nueva imagen: {featuredFile.name}</span>
+            ) : null}
+          </AdminField>
         </div>
 
         {initialData?.featuredImage?.url && !featuredFile ? (
@@ -303,16 +386,18 @@ export function ProductForm({ initialData }: ProductFormProps) {
             </div>
           </div>
 
-          <label className="mt-4 grid gap-2 text-sm font-bold text-brand-ink">
-            Nuevas imágenes
-            <input
+          <AdminField error={uploadErrors.gallery} label="Nuevas imágenes">
+            <AdminInput
               accept="image/*"
-              className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-medium"
+              className="border-dashed border-slate-300 bg-slate-50 text-sm"
               multiple
-              onChange={(event) => setGalleryFiles(Array.from(event.target.files ?? []))}
+              onChange={(event) => {
+                setGalleryFiles(Array.from(event.target.files ?? []))
+                setUploadErrors((current) => ({ ...current, gallery: undefined }))
+              }}
               type="file"
             />
-          </label>
+          </AdminField>
 
           {existingGallery.length ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -344,25 +429,13 @@ export function ProductForm({ initialData }: ProductFormProps) {
           ) : null}
         </div>
 
-        <label className="grid gap-2 text-sm font-bold text-brand-ink">
-          Descripcion corta
-          <textarea
-            className="min-h-28 rounded-3xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-            {...register('shortDescription')}
-          />
-          {errors.shortDescription ? (
-            <span className="text-xs font-semibold text-red-600">{errors.shortDescription.message}</span>
-          ) : null}
-        </label>
+        <AdminField error={errors.shortDescription?.message} label="Descripción corta" required>
+          <AdminTextarea className="min-h-28" {...register('shortDescription')} />
+        </AdminField>
 
-        <label className="grid gap-2 text-sm font-bold text-brand-ink">
-          Descripcion
-          <textarea
-            className="min-h-40 rounded-3xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-            {...register('description')}
-          />
-          {errors.description ? <span className="text-xs font-semibold text-red-600">{errors.description.message}</span> : null}
-        </label>
+        <AdminField error={errors.description?.message} label="Descripción" required>
+          <AdminTextarea className="min-h-40" {...register('description')} />
+        </AdminField>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 p-5">
@@ -379,11 +452,13 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   )}
                   {featuresFieldArray.fields.map((field, index) => (
                     <div key={field.id} className="flex gap-3">
-                      <input
-                        className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-                        placeholder="Ej: Mango ergonómico"
-                        {...register(`features.${index}.label`)}
-                      />
+                      <div className="w-full">
+                        <AdminInput
+                          placeholder="Ej: Mango ergonómico"
+                          {...register(`features.${index}.label`)}
+                        />
+                        <AdminFieldError message={errors.features?.[index]?.label?.message} />
+                      </div>
                       <button
                         className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-500"
                         onClick={() => featuresFieldArray.remove(index)}
@@ -401,6 +476,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 >
                   + Agregar característica
                 </button>
+                <AdminFieldError message={featuresError} />
               </>
             ) : (
               <p className="mt-4 text-sm text-slate-500">La sección no se mostrará en el detalle del producto.</p>
@@ -421,16 +497,20 @@ export function ProductForm({ initialData }: ProductFormProps) {
                   )}
                   {specificationsFieldArray.fields.map((field, index) => (
                     <div key={field.id} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                      <input
-                        className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-                        placeholder="Largo"
-                        {...register(`specifications.${index}.label`)}
-                      />
-                      <input
-                        className="rounded-2xl border border-slate-200 px-4 py-3 font-medium outline-none focus:border-brand-orange"
-                        placeholder="2.10 metros"
-                        {...register(`specifications.${index}.value`)}
-                      />
+                      <div>
+                        <AdminInput
+                          placeholder="Largo"
+                          {...register(`specifications.${index}.label`)}
+                        />
+                        <AdminFieldError message={errors.specifications?.[index]?.label?.message} />
+                      </div>
+                      <div>
+                        <AdminInput
+                          placeholder="2.10 metros"
+                          {...register(`specifications.${index}.value`)}
+                        />
+                        <AdminFieldError message={errors.specifications?.[index]?.value?.message} />
+                      </div>
                       <button
                         className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-500"
                         onClick={() => specificationsFieldArray.remove(index)}
@@ -448,6 +528,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 >
                   + Agregar especificación
                 </button>
+                <AdminFieldError message={specificationsError} />
               </>
             ) : (
               <p className="mt-4 text-sm text-slate-500">La sección no se mostrará en el detalle del producto.</p>
@@ -480,7 +561,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
           ))}
         </div>
 
-        {error ? <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-600">{error}</p> : null}
+        {error ? <AdminAlert>{error}</AdminAlert> : null}
 
         <div className="flex flex-wrap items-center gap-3">
           <button
