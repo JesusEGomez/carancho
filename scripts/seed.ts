@@ -4,7 +4,6 @@ import path from 'node:path'
 
 import { getPayload } from 'payload'
 
-import config from '../src/payload.config.js'
 import { previewCategories, previewProducts } from '../src/lib/storePreview'
 
 type SeedMediaInput = {
@@ -16,6 +15,11 @@ type MediaLike = {
   alt: string
   url?: string | null
 }
+
+Object.assign(process.env, {
+  NODE_ENV: 'production',
+  PAYLOAD_DISABLE_BLOB_STORAGE: 'true',
+})
 
 const seedAdmin = {
   email: process.env.SEED_ADMIN_EMAIL || 'admin@carancho.test',
@@ -96,6 +100,7 @@ async function seedAdminUser(payload: Awaited<ReturnType<typeof getPayload>>) {
 }
 
 async function main() {
+  const { default: config } = await import('../src/payload.config.js')
   const payload = await getPayload({ config })
 
   const admin = await seedAdminUser(payload)

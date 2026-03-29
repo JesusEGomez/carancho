@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
+import { api } from '@/lib/client/api'
+
 type AuthUser = {
   id: number
   email: string
@@ -24,49 +26,52 @@ const TOKEN_KEY = 'carancho-admin-token'
 const USER_KEY = 'carancho-admin-user'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const initialToken = typeof window === 'undefined' ? null : window.localStorage.getItem(TOKEN_KEY)
-  const [token, setToken] = useState<string | null>(initialToken)
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    if (typeof window === 'undefined') {
-      return null
-    }
-
-    const storedUser = window.localStorage.getItem(USER_KEY)
-
-    if (!storedUser) {
-      return null
-    }
-
-    try {
-      return JSON.parse(storedUser) as AuthUser
-    } catch {
-      window.localStorage.removeItem(USER_KEY)
-      return null
-    }
-  })
-  const [isLoading, setIsLoading] = useState(Boolean(initialToken))
+  const [token, setToken] = useState<string | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (!token) {
+    const storedToken = window.localStorage.getItem(TOKEN_KEY)
+    const storedUser = window.localStorage.getItem(USER_KEY)
+
+    setToken(storedToken)
+
+    if (!storedUser) {
+      if (!storedToken) {
+        setIsLoading(false)
+      }
       return
     }
 
-    void fetch('/api/users/me', {
-      headers: {
-        Authorization: `JWT ${token}`,
-      },
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error('Unauthorized')
-        }
+    try {
+      setUser(JSON.parse(storedUser) as AuthUser)
+    } catch {
+      window.localStorage.removeItem(USER_KEY)
+      setUser(null)
+    }
 
-        const data = (await response.json()) as { user: AuthUser | null }
+    if (!storedToken) {
+      setIsLoading(false)
+    }
+  }, [])
 
+  useEffect(() => {
+    if (!token) {
+      setIsLoading(false)
+      return
+    }
+
+    void api
+      .get<{ user: AuthUser | null }>('/users/me', {
+        headers: {
+          Authorization: `JWT ${token}`,
+        },
+      })
+      .then((response) => {
+        const data = response.data
         if (!data.user) {
           throw new Error('Unauthorized')
         }
-
         setUser(data.user)
         window.localStorage.setItem(USER_KEY, JSON.stringify(data.user))
       })
@@ -91,24 +96,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login: async (email, password) => {
         setIsLoading(true)
 
-        const response = await fetch('/api/users/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email, password }),
-        })
-
-        const data = (await response.json()) as {
-          errors?: { message?: string }[]
+        const data = (
+          await api.post<{
           token?: string
           user?: AuthUser
-        }
+        }>('/users/login', { email, password })
+        ).data
 
-        if (!response.ok || !data.token || !data.user) {
-          const message = data.errors?.[0]?.message ?? 'No fue posible iniciar sesion'
+        if (!data.token || !data.user) {
           setIsLoading(false)
-          throw new Error(message)
+          throw new Error('No fue posible iniciar sesion')
         }
 
         window.localStorage.setItem(TOKEN_KEY, data.token)
@@ -121,12 +118,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const currentToken = window.localStorage.getItem(TOKEN_KEY)
 
         if (currentToken) {
-          await fetch('/api/users/logout', {
-            method: 'POST',
-            headers: {
-              Authorization: `JWT ${currentToken}`,
-            },
-          }).catch(() => undefined)
+          await api
+            .post(
+              '/users/logout',
+              {},
+              {
+                headers: {
+                  Authorization: `JWT ${currentToken}`,
+                },
+              },
+            )
+            .catch(() => undefined)
         }
 
         window.localStorage.removeItem(TOKEN_KEY)

@@ -21,6 +21,7 @@
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts"
   },
   "dependencies": {
+    "axios": "^1.13.1",
     "@hookform/resolvers": "^5.2.2",
     "@payloadcms/db-postgres": "3.80.0",
     "@payloadcms/next": "3.80.0",

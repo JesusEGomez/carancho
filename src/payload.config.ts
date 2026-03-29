@@ -13,6 +13,9 @@ import { Products } from './collections/Products'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+const hasValidBlobToken = process.env.BLOB_READ_WRITE_TOKEN?.startsWith('vercel_blob_rw_')
+const isBlobStorageDisabled = process.env.PAYLOAD_DISABLE_BLOB_STORAGE === 'true'
+const shouldEnableBlobStorage = hasValidBlobToken && !isBlobStorageDisabled
 
 export default buildConfig({
   admin: {
@@ -37,13 +40,17 @@ export default buildConfig({
   }),
   sharp,
   plugins: [
-    vercelBlobStorage({
-      enabled: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
-      collections: {
-        media: true,
-      },
-      clientUploads: true,
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    }),
+    ...(shouldEnableBlobStorage
+      ? [
+          vercelBlobStorage({
+            enabled: true,
+            collections: {
+              media: true,
+            },
+            clientUploads: true,
+            token: process.env.BLOB_READ_WRITE_TOKEN,
+          }),
+        ]
+      : []),
   ],
 })

@@ -9,11 +9,11 @@ import {
   fetchProducts,
   saveCategory,
   saveProduct,
-  uploadMedia,
   type CategoryOption,
   type DashboardStats,
   type ProductRecord,
 } from '@/services/adminApi'
+import { uploadMedia } from '@/lib/client/media'
 
 export const DASHBOARD_STATS_QUERY_KEY = ['admin-dashboard-stats']
 export const CATEGORIES_QUERY_KEY = ['admin-categories']
