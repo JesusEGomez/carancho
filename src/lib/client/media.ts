@@ -18,6 +18,15 @@ type MediaResponse =
       doc?: MediaRecord
     }
 
+function isHostedUploadEnvironment() {
+  if (typeof window === 'undefined') {
+    return process.env.VERCEL === '1'
+  }
+
+  const { hostname } = window.location
+  return hostname.endsWith('.vercel.app')
+}
+
 function resolveMedia(data: MediaResponse) {
   const media = 'doc' in data && data.doc ? data.doc : data
 
@@ -72,13 +81,15 @@ async function uploadViaPayload(file: File, alt: string) {
 }
 
 export async function uploadMedia(file: File, alt: string) {
-  const isProduction = process.env.NODE_ENV === 'production'
+  const isHostedEnvironment = isHostedUploadEnvironment()
 
   try {
     return await uploadViaBlob(file, alt)
   } catch (error) {
-    if (isProduction) {
-      throw error
+    if (isHostedEnvironment) {
+      const message = error instanceof Error ? error.message : 'Blob upload failed'
+
+      throw new Error(`No se pudo subir el archivo a Vercel Blob: ${message}`)
     }
 
     return uploadViaPayload(file, alt)
