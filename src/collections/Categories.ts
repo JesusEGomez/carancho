@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { isAdmin } from '@/access/isAdmin'
 import { createUniqueSlugHook } from '@/hooks/createUniqueSlugHook'
+import { revalidateCategoryRoutes } from '@/hooks/revalidateStorefront'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -18,6 +19,16 @@ export const Categories: CollectionConfig = {
   hooks: {
     beforeValidate: [
       createUniqueSlugHook('categories', 'categoria'),
+    ],
+    afterChange: [
+      async () => {
+        revalidateCategoryRoutes()
+      },
+    ],
+    afterDelete: [
+      async () => {
+        revalidateCategoryRoutes()
+      },
     ],
     beforeChange: [
       async ({ data, operation, originalDoc, req }) => {

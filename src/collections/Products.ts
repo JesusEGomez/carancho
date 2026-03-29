@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { isAdmin } from '@/access/isAdmin'
 import { createUniqueSlugHook } from '@/hooks/createUniqueSlugHook'
+import { revalidateProductRoutes } from '@/hooks/revalidateStorefront'
 import { publishedOrAdmin } from '@/access/publishedOrAdmin'
 
 export const Products: CollectionConfig = {
@@ -19,6 +20,16 @@ export const Products: CollectionConfig = {
   hooks: {
     beforeValidate: [
       createUniqueSlugHook('products', 'producto'),
+    ],
+    afterChange: [
+      async ({ doc, previousDoc }) => {
+        revalidateProductRoutes([doc?.slug, previousDoc?.slug])
+      },
+    ],
+    afterDelete: [
+      async ({ doc }) => {
+        revalidateProductRoutes([doc?.slug])
+      },
     ],
   },
   fields: [
