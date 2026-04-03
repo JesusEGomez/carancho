@@ -19,6 +19,8 @@ const HERO_SLIDES = [
   },
 ] as const
 
+const HERO_BAND_ITEMS = ['Pesca deportiva', 'Camping y outdoor', 'Hogar y utilitarios'] as const
+
 export function HeroCarousel() {
   const [activeIndex, setActiveIndex] = useState(0)
   const slideCount = HERO_SLIDES.length
@@ -38,7 +40,7 @@ export function HeroCarousel() {
   }, [goToNextSlide])
 
   return (
-    <section className="relative isolate overflow-hidden bg-brand-panel">
+    <section className="relative isolate overflow-x-hidden bg-brand-panel">
       {HERO_SLIDES.map((slide, index) => (
         <div
           key={slide.src}
@@ -71,10 +73,23 @@ export function HeroCarousel() {
           <p className="mt-5 max-w-2xl text-base leading-7 text-white/88 drop-shadow-[0_6px_18px_rgba(15,23,42,0.35)] sm:text-lg">
             Equipamiento de alta calidad para pescadores apasionados y el confort de tu casa.
           </p>
-            <Link className="mt-8 inline-flex rounded-[14px] bg-brand-orange px-8 py-4 text-sm font-black uppercase tracking-[0.14em] text-white shadow-[0_16px_30px_rgba(240,90,25,0.28)]" href="/productos">
-              Ver productos
-            </Link>
+          <Link
+            className="mt-8 inline-flex rounded-[14px] bg-brand-orange px-8 py-4 text-sm font-black uppercase tracking-[0.14em] text-white shadow-[0_16px_30px_rgba(240,90,25,0.28)]"
+            href="/productos"
+          >
+            Ver productos
+          </Link>
+          <div className="mt-8 flex flex-wrap gap-3">
+            {HERO_BAND_ITEMS.map((item) => (
+              <span
+                className="rounded-full border border-white/14 bg-white/8 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-white/92 shadow-[0_12px_28px_rgba(15,23,42,0.24)] backdrop-blur-sm sm:text-xs"
+                key={item}
+              >
+                {item}
+              </span>
+            ))}
           </div>
+        </div>
       </div>
     </section>
   )
