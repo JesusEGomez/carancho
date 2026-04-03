@@ -54,6 +54,9 @@ node_modules/
 /.cursor/
 /AGENTS.md
 /docs/agent-context.md
+.agents/
+.claude/
+skills-lock.json
 
 # local-only visual references and screenshots
 /design/

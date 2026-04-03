@@ -47,6 +47,16 @@ export type DashboardStats = {
   lowStockProducts: number
 }
 
+export type StoreContactRecord = {
+  id: number
+  title: string
+  address?: string | null
+  phone?: string | null
+  email?: string | null
+  updatedAt?: string
+  createdAt?: string
+}
+
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   const [products, categories, featured, lowStock] = await Promise.all([
     api.get<{ totalDocs: number }>('/products?limit=1'),
@@ -106,6 +116,19 @@ export async function saveCategory(id: string | null, payload: Record<string, un
   const response = id
     ? await api.patch<CategoryOption>(`/categories/${id}`, payload)
     : await api.post<CategoryOption>('/categories', payload)
+
+  return response.data
+}
+
+export async function fetchPrimaryStoreContact() {
+  const response = await api.get<{ docs: StoreContactRecord[] }>('/store-contacts?limit=1&sort=createdAt')
+  return response.data.docs[0] ?? null
+}
+
+export async function saveStoreContact(id: string | null, payload: Record<string, unknown>) {
+  const response = id
+    ? await api.patch<StoreContactRecord>(`/store-contacts/${id}`, payload)
+    : await api.post<StoreContactRecord>('/store-contacts', payload)
 
   return response.data
 }
