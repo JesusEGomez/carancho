@@ -8,6 +8,7 @@ export type CategoryOption = {
   slug: string
   description?: string | null
   featured?: boolean | null
+  showInNavigation?: boolean | null
   heroImage?: number | MediaRecord | null
   parent?: CategoryOption | number | null
 }

@@ -3,7 +3,7 @@
 import { use } from 'react'
 
 import { CategoryForm, type CategoryFormData } from '@/components/admin/CategoryForm'
-import { useCategory } from '@/hooks/useAdminCatalog'
+import { useCategory } from '@/hooks/admin/useAdminCategories'
 import type { CategoryOption, MediaRecord } from '@/services/adminApi'
 
 type Props = {
@@ -53,6 +53,7 @@ export default function EditCategoryPage({ params }: Props) {
     id: category.id,
     name: category.name,
     parentId: parent?.id ?? (typeof category.parent === 'number' ? category.parent : null),
+    showInNavigation: category.showInNavigation ?? false,
   }
 
   return <CategoryForm initialData={initialData} />

@@ -12,7 +12,7 @@ import {
   AdminInput,
   AdminTextarea,
 } from '@/components/admin/form-primitives'
-import { useUpsertCategory } from '@/hooks/useAdminCatalog'
+import { useUpsertCategory } from '@/hooks/admin/useAdminCategories'
 import type { MediaRecord } from '@/services/adminApi'
 
 const MAX_IMAGE_SIZE_MB = 8
@@ -23,6 +23,7 @@ const categoryFormSchema = z
     description: z.string().trim().optional(),
     featured: z.boolean().default(false),
     name: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres'),
+    showInNavigation: z.boolean().default(false),
   })
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>
@@ -43,6 +44,7 @@ const defaultValues: CategoryFormData = {
   featured: false,
   heroImage: null,
   name: '',
+  showInNavigation: false,
 }
 
 function validateHeroFile(file: File | null) {
@@ -119,6 +121,7 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
                 heroImage: initialData?.heroImageId ?? null,
                 name: values.name.trim(),
                 parent: initialData?.parentId ?? null,
+                showInNavigation: isSubcategory ? false : values.showInNavigation,
               },
             })
             .then(() => {
@@ -136,6 +139,13 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
             <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 font-medium text-brand-ink">
               <input disabled={isSubcategory} type="checkbox" {...register('featured')} />
               {isSubcategory ? 'Disponible solo para categorías principales' : 'Mostrar en el home'}
+            </label>
+          </AdminField>
+
+          <AdminField error={errors.showInNavigation?.message} label="Mostrar en navegación">
+            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 font-medium text-brand-ink">
+              <input disabled={isSubcategory} type="checkbox" {...register('showInNavigation')} />
+              {isSubcategory ? 'Disponible solo para categorías principales' : 'Mostrar en header y footer'}
             </label>
           </AdminField>
 

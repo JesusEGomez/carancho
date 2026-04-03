@@ -3,7 +3,7 @@
 import { use } from 'react'
 
 import { ProductForm, type ProductFormData } from '@/components/admin/ProductForm'
-import { useProduct } from '@/hooks/useAdminCatalog'
+import { useProduct } from '@/hooks/admin/useAdminProducts'
 import type { CategoryOption, MediaRecord } from '@/services/adminApi'
 
 type Props = {

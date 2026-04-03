@@ -178,6 +178,7 @@ export interface Category {
   description?: string | null;
   parent?: (number | null) | Category;
   featured?: boolean | null;
+  showInNavigation?: boolean | null;
   heroImage?: (number | null) | Media;
   updatedAt: string;
   createdAt: string;
@@ -353,6 +354,7 @@ export interface CategoriesSelect<T extends boolean = true> {
   description?: T;
   parent?: T;
   featured?: T;
+  showInNavigation?: T;
   heroImage?: T;
   updatedAt?: T;
   createdAt?: T;

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 
-import { useCategories } from '@/hooks/useAdminCatalog'
+import { useCategories } from '@/hooks/admin/useAdminCategories'
 import type { CategoryOption } from '@/services/adminApi'
 
 function relation(value: CategoryOption | number | null | undefined) {
@@ -53,6 +53,7 @@ export default function AdminCategoriesPage() {
               <th className="px-6 py-4">Slug</th>
               <th className="px-6 py-4">Tipo</th>
               <th className="px-6 py-4">Padre</th>
+              <th className="px-6 py-4">Navegación</th>
               <th className="px-6 py-4">Destacada</th>
               <th className="px-6 py-4 text-right">Editar</th>
             </tr>
@@ -73,6 +74,15 @@ export default function AdminCategoriesPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-slate-500">-</td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-black ${
+                        category.showInNavigation ? 'bg-[#ecfdf3] text-[#15803d]' : 'bg-[#f3f4f6] text-slate-500'
+                      }`}
+                    >
+                      {category.showInNavigation ? 'Sí' : 'No'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-black ${
@@ -100,6 +110,7 @@ export default function AdminCategoriesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-slate-500">{category.name}</td>
+                    <td className="px-6 py-4 text-slate-500">No</td>
                     <td className="px-6 py-4 text-slate-500">No</td>
                     <td className="px-6 py-4 text-right">
                       <Link className="text-sm font-black text-brand-orange" href={`/admin/categorias/${subcategory.id}`}>

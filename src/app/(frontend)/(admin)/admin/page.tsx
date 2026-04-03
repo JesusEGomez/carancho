@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 
-import { useCategories, useDashboardStats, useProducts } from '@/hooks/useAdminCatalog'
+import { useCategories } from '@/hooks/admin/useAdminCategories'
+import { useDashboardStats } from '@/hooks/admin/useAdminDashboard'
+import { useProducts } from '@/hooks/admin/useAdminProducts'
 import { formatCurrency } from '@/lib/formatCurrency'
 
 export default function AdminDashboardPage() {
