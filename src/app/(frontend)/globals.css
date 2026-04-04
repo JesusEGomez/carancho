@@ -120,7 +120,7 @@
   }
 
   .orange-button {
-    @apply rounded-[12px] bg-brand-orange px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white transition hover:brightness-95;
+    @apply rounded-[12px] bg-brand-orange px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white shadow-[0_16px_28px_rgba(240,97,25,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_20px_34px_rgba(240,97,25,0.28)] focus-visible:ring-2 focus-visible:ring-brand-orange/30 focus-visible:outline-none;
   }
 
   .pill-badge {
@@ -128,6 +128,6 @@
   }
 
   .btn-press {
-    @apply transition-all active:translate-y-[1px] active:shadow-none;
+    @apply transition-all duration-200 active:translate-y-[1px] active:scale-[0.99] active:shadow-none;
   }
 }

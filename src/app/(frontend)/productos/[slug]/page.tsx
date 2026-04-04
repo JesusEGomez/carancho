@@ -4,8 +4,10 @@ import { notFound } from 'next/navigation'
 import { StoreFooter } from '@/components/store/StoreFooter'
 import { StoreHeader } from '@/components/store/StoreHeader'
 import { StoreMedia } from '@/components/store/StoreMedia'
+import { ProductPurchasePanel } from '@/components/store/ProductPurchasePanel'
 import { ProductCard } from '@/components/store/ProductCard'
 import { formatCurrency } from '@/lib/formatCurrency'
+import { getProductStockPresentation } from '@/lib/product-stock'
 import { getProductBySlug } from '@/lib/store'
 import type { Media } from '@/payload-types'
 
@@ -30,6 +32,7 @@ export default async function ProductDetailPage({ params }: Props) {
   const showFeatures = (product.showFeatures ?? features.length > 0) && features.length > 0
   const showSpecifications = (product.showSpecifications ?? specifications.length > 0) && specifications.length > 0
   const gallery = (product.gallery?.length ? product.gallery : [product.featuredImage]) as Media[]
+  const stockPresentation = getProductStockPresentation(product.stock)
 
   return (
     <div className="min-h-screen bg-white">
@@ -77,7 +80,7 @@ export default async function ProductDetailPage({ params }: Props) {
           </div>
 
           <div className="pt-2">
-            <span className="pill-badge bg-emerald-50 text-emerald-600">En stock - envío hoy</span>
+            <span className={`pill-badge ${stockPresentation.badgeClassName}`}>{stockPresentation.label}</span>
             <h1 className="mt-4 text-4xl font-black leading-tight text-brand-ink sm:text-5xl">{product.name}</h1>
             <p className="mt-4 max-w-xl text-base leading-7 text-slate-500">{product.shortDescription}</p>
 
@@ -91,16 +94,19 @@ export default async function ProductDetailPage({ params }: Props) {
               ) : null}
             </div>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <div className="inline-flex h-12 items-center rounded-full border border-slate-200 bg-white px-4 text-sm font-black text-brand-ink">
-                −&nbsp;&nbsp;1&nbsp;&nbsp;+
-              </div>
-              <button className="orange-button h-12 min-w-[220px]">Añadir al carrito</button>
-            </div>
+            <ProductPurchasePanel
+              product={{
+                featuredImageAlt: product.featuredImage?.alt,
+                featuredImageUrl: product.featuredImage?.url,
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                slug: product.slug,
+                stock: product.stock,
+              }}
+            />
 
-            <button className="mt-3 h-12 w-full rounded-full border border-slate-200 text-sm font-black uppercase tracking-[0.12em] text-brand-ink sm:max-w-[220px]">
-              Comprar ahora
-            </button>
+            <p className="mt-4 text-sm font-medium text-slate-500">{stockPresentation.helperText}</p>
 
             <div className="mt-8 grid gap-4 rounded-[22px] border border-slate-200 bg-white p-5 text-center sm:grid-cols-3">
               <div>

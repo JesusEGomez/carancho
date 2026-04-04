@@ -72,6 +72,7 @@ export interface Config {
     categories: Category;
     products: Product;
     'store-contacts': StoreContact;
+    orders: Order;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -84,6 +85,7 @@ export interface Config {
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     'store-contacts': StoreContactsSelect<false> | StoreContactsSelect<true>;
+    orders: OrdersSelect<false> | OrdersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -237,6 +239,42 @@ export interface StoreContact {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "orders".
+ */
+export interface Order {
+  id: number;
+  status: 'draft' | 'pending_payment' | 'confirmed' | 'cancelled';
+  currency: string;
+  subtotal: number;
+  total: number;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  deliveryCity: string;
+  deliveryAddress: string;
+  deliveryNotes?: string | null;
+  confirmationToken: string;
+  stockApplied?: boolean | null;
+  paymentProvider?: 'mercadopago' | null;
+  paymentStatus?: ('pending' | 'approved' | 'rejected' | 'cancelled') | null;
+  externalReference?: string | null;
+  providerPreferenceId?: string | null;
+  providerPaymentId?: string | null;
+  providerRawStatus?: string | null;
+  items: {
+    product: number | Product;
+    productName: string;
+    productSlug: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+    id?: string | null;
+  }[];
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -278,6 +316,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'store-contacts';
         value: number | StoreContact;
+      } | null)
+    | ({
+        relationTo: 'orders';
+        value: number | Order;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -423,6 +465,43 @@ export interface StoreContactsSelect<T extends boolean = true> {
   address?: T;
   phone?: T;
   email?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "orders_select".
+ */
+export interface OrdersSelect<T extends boolean = true> {
+  status?: T;
+  currency?: T;
+  subtotal?: T;
+  total?: T;
+  customerName?: T;
+  customerEmail?: T;
+  customerPhone?: T;
+  deliveryCity?: T;
+  deliveryAddress?: T;
+  deliveryNotes?: T;
+  confirmationToken?: T;
+  stockApplied?: T;
+  paymentProvider?: T;
+  paymentStatus?: T;
+  externalReference?: T;
+  providerPreferenceId?: T;
+  providerPaymentId?: T;
+  providerRawStatus?: T;
+  items?:
+    | T
+    | {
+        product?: T;
+        productName?: T;
+        productSlug?: T;
+        quantity?: T;
+        unitPrice?: T;
+        lineTotal?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }

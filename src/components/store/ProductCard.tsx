@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 
+import { AddToCartButton } from '@/components/store/AddToCartButton'
 import type { ProductWithRelations } from '@/lib/store'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { StoreMedia } from '@/components/store/StoreMedia'
@@ -54,21 +55,21 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
           </div>
         </div>
 
-        <button
-          className="btn-press mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-orange py-2.5 text-sm font-semibold text-white hover:opacity-90"
-          onClick={(event) => {
+        <AddToCartButton
+          onBeforeAdd={(event) => {
             event.preventDefault()
             event.stopPropagation()
           }}
-          type="button"
-        >
-          <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <circle cx="9" cy="20" r="1.5" />
-            <circle cx="18" cy="20" r="1.5" />
-            <path d="M3 4h2l2.2 10.5a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Añadir al carrito
-        </button>
+          product={{
+            featuredImageAlt: image?.alt,
+            featuredImageUrl: image?.url,
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            slug: product.slug,
+            stock: product.stock,
+          }}
+        />
       </div>
     </Link>
   )
