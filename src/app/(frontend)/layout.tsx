@@ -1,6 +1,8 @@
 import React from 'react'
 import './globals.css'
 
+import { QueryProvider } from '@/providers/QueryProvider'
+
 export const metadata = {
   description: 'Carancho Pesca Deportiva: pesca, camping, nautica y hogar.',
   title: 'Carancho Pesca Deportiva',
@@ -12,7 +14,9 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
   return (
     <html data-scroll-behavior="smooth" lang="es">
       <body className="min-h-screen bg-brand-cream">
-        <main>{children}</main>
+        <QueryProvider>
+          <main>{children}</main>
+        </QueryProvider>
       </body>
     </html>
   )

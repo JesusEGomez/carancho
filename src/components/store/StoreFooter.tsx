@@ -1,5 +1,11 @@
+'use client'
+
 import Image from 'next/image'
 import Link from 'next/link'
+import type { ReactNode } from 'react'
+
+import { useStoreContact } from '@/hooks/store/useStoreContact'
+import { useNavigationCategories } from '@/hooks/store/useStoreNavigation'
 
 function MapPinIcon() {
   return (
@@ -27,11 +33,75 @@ function MailIcon() {
   )
 }
 
+type ContactItem = {
+  icon: ReactNode
+  key: string
+  value: string
+}
+
 export function StoreFooter() {
+  const navigationCategoriesQuery = useNavigationCategories()
+  const navigationCategories = navigationCategoriesQuery.data?.docs ?? []
+  const storeContactQuery = useStoreContact()
+  const storeContact = storeContactQuery.data
+  const address = storeContact?.address?.trim() ?? ''
+  const phone = storeContact?.phone?.trim() ?? ''
+  const email = storeContact?.email?.trim() ?? ''
+  const hasAnyContactInfo = Boolean(address || phone || email)
+  const contactItems: ContactItem[] = []
+
+  if (hasAnyContactInfo) {
+    if (address) {
+      contactItems.push({
+        icon: <MapPinIcon />,
+        key: 'address',
+        value: address,
+      })
+    }
+
+    if (phone) {
+      contactItems.push({
+        icon: <PhoneIcon />,
+        key: 'phone',
+        value: phone,
+      })
+    }
+
+    if (email) {
+      contactItems.push({
+        icon: <MailIcon />,
+        key: 'email',
+        value: email,
+      })
+    }
+  } else {
+    contactItems.push(
+      {
+        icon: <MapPinIcon />,
+        key: 'address',
+        value: 'Calle Principal 123, Provincia, Argentina',
+      },
+      {
+        icon: <PhoneIcon />,
+        key: 'phone',
+        value: '+54 (011) 4567-8910',
+      },
+      {
+        icon: <MailIcon />,
+        key: 'email',
+        value: 'hola@caranchopesca.com.ar',
+      },
+    )
+  }
+
   return (
     <footer className="mt-16 bg-brand-panel text-white">
       <div className="container-shell py-12">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div
+          className={`grid grid-cols-1 gap-8 sm:grid-cols-2 ${
+            navigationCategories.length ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+          }`}
+        >
           <div>
             <div className="mb-4 flex items-center gap-2">
               <Image
@@ -48,31 +118,20 @@ export function StoreFooter() {
             </p>
           </div>
 
-          <div>
-            <h4 className="mb-4 text-sm font-bold uppercase tracking-wider">Categorías</h4>
-            <ul className="space-y-2 text-sm opacity-70">
-              <li>
-                <Link className="transition-opacity hover:opacity-100" href="/productos?categoria=canas-y-reels">
-                  Cañas de Pescar
-                </Link>
-              </li>
-              <li>
-                <Link className="transition-opacity hover:opacity-100" href="/productos?categoria=reels">
-                  Reels y Accesorios
-                </Link>
-              </li>
-              <li>
-                <Link className="transition-opacity hover:opacity-100" href="/productos?categoria=senuelos">
-                  Señuelos
-                </Link>
-              </li>
-              <li>
-                <Link className="transition-opacity hover:opacity-100" href="/productos?categoria=camping">
-                  Camping y Outdoor
-                </Link>
-              </li>
-            </ul>
-          </div>
+          {navigationCategories.length ? (
+            <div>
+              <h4 className="mb-4 text-sm font-bold uppercase tracking-wider">Categorías</h4>
+              <ul className="space-y-2 text-sm opacity-70">
+                {navigationCategories.map((category) => (
+                  <li key={category.id}>
+                    <Link className="transition-opacity hover:opacity-100" href={`/productos?categoria=${category.slug}`}>
+                      {category.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <div>
             <h4 className="mb-4 text-sm font-bold uppercase tracking-wider">Ayuda</h4>
@@ -87,18 +146,12 @@ export function StoreFooter() {
           <div id="contacto">
             <h4 className="mb-4 text-sm font-bold uppercase tracking-wider">Contacto</h4>
             <ul className="space-y-3 text-sm opacity-70">
-              <li className="flex items-start gap-2">
-                <MapPinIcon />
-                <span>Calle Principal 123, Provincia, Argentina</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <PhoneIcon />
-                <span>+54 (011) 4567-8910</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <MailIcon />
-                <span>hola@caranchopesca.com.ar</span>
-              </li>
+              {contactItems.map((item) => (
+                <li className="flex items-start gap-2" key={item.key}>
+                  {item.icon}
+                  <span>{item.value}</span>
+                </li>
+              ))}
             </ul>
           </div>
         </div>

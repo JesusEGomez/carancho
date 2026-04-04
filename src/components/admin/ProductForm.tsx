@@ -14,7 +14,8 @@ import {
   AdminSelect,
   AdminTextarea,
 } from '@/components/admin/form-primitives'
-import { useCategories, useUpsertProduct } from '@/hooks/useAdminCatalog'
+import { useCategories } from '@/hooks/admin/useAdminCategories'
+import { useUpsertProduct } from '@/hooks/admin/useAdminProducts'
 import type { MediaRecord } from '@/services/adminApi'
 
 const MAX_IMAGE_SIZE_MB = 8

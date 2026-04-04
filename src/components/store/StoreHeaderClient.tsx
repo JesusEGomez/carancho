@@ -5,12 +5,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
-const navLinks = [
-  { href: '/', label: 'Inicio' },
-  { href: '/productos?categoria=canas-y-reels', label: 'Pesca' },
-  { href: '/productos?categoria=camping', label: 'Camping' },
-  { href: '/productos?categoria=hogar', label: 'Hogar' },
-] as const
+import { useNavigationCategories } from '@/hooks/store/useStoreNavigation'
 
 function SearchIcon() {
   return (
@@ -51,6 +46,14 @@ export function StoreHeaderClient() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const navigationCategoriesQuery = useNavigationCategories()
+  const navigationLinks = [
+    { href: '/', label: 'Inicio' },
+    ...(navigationCategoriesQuery.data?.docs ?? []).map((category) => ({
+      href: `/productos?categoria=${category.slug}`,
+      label: category.name,
+    })),
+  ]
 
   const isActiveLink = (href: string) => {
     const [linkPath, queryString] = href.split('?')
@@ -89,7 +92,7 @@ export function StoreHeaderClient() {
           </Link>
 
           <nav className="hidden items-center gap-6 md:flex">
-            {navLinks.map((link) => (
+            {navigationLinks.map((link) => (
               <Link
                 key={link.href}
                 className={`text-sm font-semibold transition-colors hover:text-brand-orange ${
@@ -136,7 +139,7 @@ export function StoreHeaderClient() {
 
         {mobileOpen ? (
           <nav className="mt-4 flex flex-col gap-2 border-t border-brand-border pb-2 pt-4 md:hidden">
-            {navLinks.map((link) => (
+            {navigationLinks.map((link) => (
               <Link
                 key={link.href}
                 className={`rounded-lg px-4 py-3 text-base font-semibold transition-colors hover:bg-[#f1eeea] ${

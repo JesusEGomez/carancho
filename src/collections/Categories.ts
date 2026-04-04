@@ -8,7 +8,7 @@ export const Categories: CollectionConfig = {
   slug: 'categories',
   admin: {
     useAsTitle: 'name',
-    defaultColumns: ['name', 'slug', 'featured'],
+    defaultColumns: ['name', 'slug', 'showInNavigation', 'featured'],
   },
   access: {
     create: isAdmin,
@@ -47,6 +47,7 @@ export const Categories: CollectionConfig = {
           return {
             ...data,
             featured: data.featured ?? originalDoc?.featured ?? false,
+            showInNavigation: data.showInNavigation ?? originalDoc?.showInNavigation ?? false,
           }
         }
 
@@ -71,6 +72,7 @@ export const Categories: CollectionConfig = {
         return {
           ...data,
           featured: false,
+          showInNavigation: false,
         }
       },
     ],
@@ -104,6 +106,11 @@ export const Categories: CollectionConfig = {
     },
     {
       name: 'featured',
+      type: 'checkbox',
+      defaultValue: false,
+    },
+    {
+      name: 'showInNavigation',
       type: 'checkbox',
       defaultValue: false,
     },

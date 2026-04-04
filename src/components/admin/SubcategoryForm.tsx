@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
 import { AdminAlert, AdminField, AdminInput, AdminSelect } from '@/components/admin/form-primitives'
-import { useCategories, useUpsertCategory } from '@/hooks/useAdminCatalog'
+import { useCategories, useUpsertCategory } from '@/hooks/admin/useAdminCategories'
 
 const subcategoryFormSchema = z.object({
   name: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres'),
