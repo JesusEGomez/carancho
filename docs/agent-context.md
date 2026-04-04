@@ -40,6 +40,7 @@ Carancho is a Payload CMS + Next.js commerce experience for fishing, camping, an
 - Media uploads are intended to use Vercel Blob in hosted environments when `BLOB_READ_WRITE_TOKEN` is present.
 - Media uploads in the custom admin now post directly to Payload's `/api/media` endpoint and rely on the configured storage adapter to place files in Vercel Blob on hosted environments.
 - The build pipeline now runs `payload migrate` before `next build` when `DATABASE_URL` is available so Vercel preview and dev deployments stay aligned with the current schema.
+- The `orders` collection is now backed by a committed schema migration so production can create checkout orders without relying on ad hoc database changes.
 - The seed script is now restricted to local development databases by default and is blocked on Vercel / CI unless an explicit force flag is provided.
 
 ## Data and Runtime Behavior
