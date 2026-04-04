@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
 import { useNavigationCategories } from '@/hooks/store/useStoreNavigation'
+import { useCart } from '@/providers/CartProvider'
 
 function SearchIcon() {
   return (
@@ -46,6 +47,7 @@ export function StoreHeaderClient() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { itemCount } = useCart()
   const navigationCategoriesQuery = useNavigationCategories()
   const navigationLinks = [
     { href: '/', label: 'Inicio' },
@@ -118,12 +120,12 @@ export function StoreHeaderClient() {
           </form>
 
           <div className="flex items-center gap-3">
-            <button className="relative rounded-lg p-2 transition-colors hover:bg-[#f1eeea]" type="button">
+            <Link className="relative rounded-lg p-2 transition-colors hover:bg-[#f1eeea]" href="/carrito">
               <ShoppingCartIcon />
               <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-orange text-[10px] font-bold text-white">
-                0
+                {itemCount}
               </span>
-            </button>
+            </Link>
             <button
               aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
               className="rounded-lg p-2 md:hidden"

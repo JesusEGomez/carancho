@@ -57,6 +57,40 @@ export type StoreContactRecord = {
   createdAt?: string
 }
 
+export type OrderItemRecord = {
+  id?: string | null
+  product: ProductRecord | number
+  productName: string
+  productSlug: string
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+}
+
+export type OrderRecord = {
+  id: number
+  status: 'draft' | 'pending_payment' | 'confirmed' | 'cancelled'
+  currency: string
+  subtotal: number
+  total: number
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  deliveryCity: string
+  deliveryAddress: string
+  deliveryNotes?: string | null
+  confirmationToken: string
+  paymentProvider?: 'mercadopago' | null
+  paymentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled' | null
+  externalReference?: string | null
+  providerPreferenceId?: string | null
+  providerPaymentId?: string | null
+  providerRawStatus?: string | null
+  createdAt?: string
+  updatedAt?: string
+  items?: OrderItemRecord[] | null
+}
+
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   const [products, categories, featured, lowStock] = await Promise.all([
     api.get<{ totalDocs: number }>('/products?limit=1'),
@@ -130,5 +164,15 @@ export async function saveStoreContact(id: string | null, payload: Record<string
     ? await api.patch<StoreContactRecord>(`/store-contacts/${id}`, payload)
     : await api.post<StoreContactRecord>('/store-contacts', payload)
 
+  return response.data
+}
+
+export async function fetchOrders() {
+  const response = await api.get<{ docs: OrderRecord[] }>('/orders?depth=1&limit=100&sort=-createdAt')
+  return response.data
+}
+
+export async function fetchOrder(id: string) {
+  const response = await api.get<OrderRecord>(`/orders/${id}?depth=1`)
   return response.data
 }

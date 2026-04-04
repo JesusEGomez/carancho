@@ -11,6 +11,7 @@ import { Media } from './collections/Media'
 import { Categories } from './collections/Categories'
 import { Products } from './collections/Products'
 import { StoreContacts } from './collections/StoreContacts'
+import { Orders } from './collections/Orders'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -28,7 +29,7 @@ export default buildConfig({
   routes: {
     admin: '/payload-admin',
   },
-  collections: [Users, Media, Categories, Products, StoreContacts],
+  collections: [Users, Media, Categories, Products, StoreContacts, Orders],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

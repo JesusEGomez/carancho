@@ -43,6 +43,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     { href: '/admin', label: 'Dashboard' },
     { href: '/admin/categorias', label: 'Categorías' },
     { href: '/admin/productos', label: 'Inventario' },
+    { href: '/admin/ordenes', label: 'Órdenes' },
     { href: '/admin/contacto', label: 'Contacto' },
     { href: '/admin/productos/nuevo', label: 'Nuevo producto' },
   ]
