@@ -24,5 +24,34 @@ export type CheckoutFormData = z.infer<typeof checkoutFormSchema>
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>
 export type CreateOrderResponse = {
   confirmationToken: string
+  initPoint: string
   orderId: number
+  preferenceId: string
+}
+
+export type CheckoutStatusResponse = {
+  confirmationToken: string
+  customerEmail: string
+  customerName: string
+  customerPhone: string
+  deliveryAddress: string
+  deliveryCity: string
+  deliveryNotes?: string | null
+  id: number
+  items: {
+    id?: string | null
+    lineTotal: number
+    product: number
+    productName: string
+    productSlug: string
+    quantity: number
+    unitPrice: number
+  }[]
+  paymentProvider?: 'mercadopago' | null
+  paymentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'refunded' | 'charged_back' | null
+  providerPaymentId?: string | null
+  providerPreferenceId?: string | null
+  providerRawStatus?: string | null
+  status: 'draft' | 'pending_payment' | 'confirmed' | 'fulfillment_blocked' | 'cancelled'
+  total: number
 }

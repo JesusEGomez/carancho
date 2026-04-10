@@ -95,7 +95,7 @@ export async function buildValidatedOrderData(input: CreateOrderRequest) {
     deliveryCity: input.customer.deliveryCity,
     deliveryNotes: input.customer.deliveryNotes || undefined,
     items: orderItems,
-    status: 'confirmed' as const,
+    status: 'pending_payment' as const,
     subtotal,
     total: subtotal,
   }

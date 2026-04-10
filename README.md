@@ -41,6 +41,9 @@ Current local setup expects:
 ```env
 DATABASE_URL=postgresql://postgres:postgres@localhost:5433/carancho
 PAYLOAD_SECRET=your-secret
+MERCADOPAGO_ACCESS_TOKEN=APP_USR-xxxxxxxxxxxxxxxxxxxxxxxx
+MERCADOPAGO_WEBHOOK_SECRET=your-webhook-secret
+MERCADOPAGO_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
 3. Install dependencies:
@@ -97,6 +100,13 @@ src/
 The storefront reads from Payload through `src/lib/store.ts`.
 
 If the CMS has no catalog data yet, the storefront falls back to preview content from `src/lib/storePreview.ts` so the main pages still render with realistic cards and layouts. This is only a presentation fallback for local/demo use.
+
+## Mercado Pago Checkout Pro
+
+- The storefront checkout now creates a local order in `pending_payment` and redirects the buyer to Mercado Pago Checkout Pro.
+- Payment confirmation is resolved server-side through Mercado Pago notifications plus a backend reconciliation step on the return pages.
+- Stock is discounted only when the order reaches `confirmed`.
+- To complete the production setup, configure the same public webhook URL in Mercado Pago "Tus integraciones" and enable the `payments` topic. The project also sends `notification_url` in the payment preference.
 
 ## Validation
 

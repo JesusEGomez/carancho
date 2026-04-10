@@ -1,5 +1,5 @@
 import type { CartLine } from '@/lib/cart'
-import type { CheckoutFormData, CreateOrderRequest, CreateOrderResponse } from '@/lib/checkout-schema'
+import type { CheckoutFormData, CreateOrderRequest } from '@/lib/checkout-schema'
 
 export function buildCreateOrderRequest(items: CartLine[], customer: CheckoutFormData): CreateOrderRequest {
   return {
@@ -9,8 +9,4 @@ export function buildCreateOrderRequest(items: CartLine[], customer: CheckoutFor
       quantity: item.quantity,
     })),
   }
-}
-
-export function getCheckoutConfirmationPath(response: CreateOrderResponse) {
-  return `/checkout/confirmacion/${response.orderId}?token=${response.confirmationToken}`
 }

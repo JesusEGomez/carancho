@@ -5,6 +5,7 @@ import * as migration_20260329_183000_remove_category_order from './20260329_183
 import * as migration_20260403_190348_category_navigation_flag from './20260403_190348_category_navigation_flag';
 import * as migration_20260403_194500_store_contacts_collection from './20260403_194500_store_contacts_collection';
 import * as migration_20260404_201500_orders_collection from './20260404_201500_orders_collection';
+import * as migration_20260404_213714_order_payment_status_hardening from './20260404_213714_order_payment_status_hardening';
 
 export const migrations = [
   {
@@ -41,5 +42,10 @@ export const migrations = [
     up: migration_20260404_201500_orders_collection.up,
     down: migration_20260404_201500_orders_collection.down,
     name: '20260404_201500_orders_collection'
+  },
+  {
+    up: migration_20260404_213714_order_payment_status_hardening.up,
+    down: migration_20260404_213714_order_payment_status_hardening.down,
+    name: '20260404_213714_order_payment_status_hardening'
   },
 ];

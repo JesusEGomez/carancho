@@ -69,7 +69,7 @@ export type OrderItemRecord = {
 
 export type OrderRecord = {
   id: number
-  status: 'draft' | 'pending_payment' | 'confirmed' | 'cancelled'
+  status: 'draft' | 'pending_payment' | 'confirmed' | 'fulfillment_blocked' | 'cancelled'
   currency: string
   subtotal: number
   total: number
@@ -81,7 +81,7 @@ export type OrderRecord = {
   deliveryNotes?: string | null
   confirmationToken: string
   paymentProvider?: 'mercadopago' | null
-  paymentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled' | null
+  paymentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'refunded' | 'charged_back' | null
   externalReference?: string | null
   providerPreferenceId?: string | null
   providerPaymentId?: string | null

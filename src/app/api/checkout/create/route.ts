@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { CheckoutDomainError } from '@/lib/checkout-errors'
-import { buildValidatedOrderData } from '@/lib/checkout'
-import { getPayloadClient } from '@/lib/payload'
+import { createMercadoPagoCheckout } from '@/lib/mercadopago/server'
 import { createOrderRequestSchema, type CreateOrderResponse } from '@/lib/checkout-schema'
 
 export async function POST(request: Request) {
@@ -26,17 +25,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const payload = await getPayloadClient()
-    const orderData = await buildValidatedOrderData(parsed.data)
-    const order = await payload.create({
-      collection: 'orders',
-      data: orderData,
-    })
-
-    const response: CreateOrderResponse = {
-      confirmationToken: order.confirmationToken,
-      orderId: order.id,
-    }
+    const response: CreateOrderResponse = await createMercadoPagoCheckout(parsed.data)
 
     return NextResponse.json(response, { status: 201 })
   } catch (error) {
@@ -51,7 +40,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const message = error instanceof Error ? error.message : 'No se pudo crear la orden.'
-    return NextResponse.json({ message }, { status: 400 })
+    console.error('Unexpected checkout creation error', error)
+    return NextResponse.json({ message: 'No se pudo iniciar el pago.' }, { status: 500 })
   }
 }

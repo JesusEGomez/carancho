@@ -9,7 +9,17 @@ const ORDER_STATUS_LABELS = {
   cancelled: 'Cancelada',
   confirmed: 'Confirmada',
   draft: 'Borrador',
+  fulfillment_blocked: 'Bloqueada por stock',
   pending_payment: 'Pendiente de pago',
+} as const
+
+const PAYMENT_STATUS_LABELS = {
+  approved: 'Aprobado',
+  cancelled: 'Cancelado',
+  charged_back: 'Contracargo',
+  pending: 'Pendiente',
+  rejected: 'Rechazado',
+  refunded: 'Reintegrado',
 } as const
 
 export default function AdminOrdersPage() {
@@ -22,7 +32,7 @@ export default function AdminOrdersPage() {
       <div className="flex flex-col gap-4 border-b border-[#edf0f5] px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Órdenes</p>
-          <h1 className="mt-2 text-4xl font-black text-brand-ink">Checkout local</h1>
+          <h1 className="mt-2 text-4xl font-black text-brand-ink">Checkout Mercado Pago</h1>
         </div>
       </div>
 
@@ -35,6 +45,7 @@ export default function AdminOrdersPage() {
               <th className="px-6 py-4">Items</th>
               <th className="px-6 py-4">Total</th>
               <th className="px-6 py-4">Estado</th>
+              <th className="px-6 py-4">Pago</th>
               <th className="px-6 py-4 text-right">Detalle</th>
             </tr>
           </thead>
@@ -55,6 +66,9 @@ export default function AdminOrdersPage() {
                   <span className="rounded-full bg-[#fff7f1] px-3 py-1 text-xs font-black text-brand-orange">
                     {ORDER_STATUS_LABELS[order.status]}
                   </span>
+                </td>
+                <td className="px-6 py-4 text-slate-500">
+                  {order.paymentStatus ? PAYMENT_STATUS_LABELS[order.paymentStatus] : '-'}
                 </td>
                 <td className="px-6 py-4 text-right">
                   <Link className="text-sm font-black text-brand-orange" href={`/admin/ordenes/${order.id}`}>
