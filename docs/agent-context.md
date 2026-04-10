@@ -54,6 +54,9 @@ Carancho is a Payload CMS + Next.js commerce experience for fishing, camping, an
   - `orders`
 - The storefront reads from Payload through `src/lib/store.ts`.
 - The storefront now includes a client-side cart persisted in `localStorage`, a guest-first checkout flow, and a confirmation screen backed by the `orders` collection.
+- The checkout now integrates Mercado Pago Checkout Pro: local orders are created in `pending_payment`, the buyer is redirected to Mercado Pago, and final payment state is reconciled via backend return/status checks plus a Mercado Pago webhook.
+- Mercado Pago preference creation now uses an explicit idempotency key derived from the local order so client or edge retries do not duplicate checkout preferences.
+- The Mercado Pago webhook now returns non-2xx responses when a notification is invalid or cannot be processed, so Mercado Pago does not receive false acknowledgements.
 - Orders are created through an internal checkout endpoint that recalculates prices and availability from Payload before persisting.
 - The custom admin now includes a minimal `/admin/ordenes` module for operational review of guest checkout orders.
 - Storefront header and footer navigation now read from categories explicitly marked for navigation instead of hardcoded links.

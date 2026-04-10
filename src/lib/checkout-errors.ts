@@ -1,5 +1,6 @@
 export const CHECKOUT_ERROR_CODES = {
   OUT_OF_STOCK: 'OUT_OF_STOCK',
+  PAYMENT_UNAVAILABLE: 'PAYMENT_UNAVAILABLE',
   PRODUCT_UNAVAILABLE: 'PRODUCT_UNAVAILABLE',
 } as const
 
@@ -38,5 +39,13 @@ export function createUnavailableProductError(productLabel: string) {
     {
       productName: productLabel,
     },
+  )
+}
+
+export function createPaymentUnavailableError() {
+  return new CheckoutDomainError(
+    CHECKOUT_ERROR_CODES.PAYMENT_UNAVAILABLE,
+    'El medio de pago no está disponible en este momento. Intentá nuevamente en unos minutos.',
+    503,
   )
 }

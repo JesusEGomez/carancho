@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 
-import { buildCreateOrderRequest, getCheckoutConfirmationPath } from '@/lib/checkout-client'
+import { buildCreateOrderRequest } from '@/lib/checkout-client'
 import { CHECKOUT_ERROR_CODES } from '@/lib/checkout-errors'
 import { createOrder } from '@/services/store/checkoutApi'
 import { checkoutFormSchema, type CheckoutFormData } from '@/lib/checkout-schema'
@@ -15,9 +14,8 @@ import { useToast } from '@/providers/ToastProvider'
 import { ApiError } from '@/lib/client/api'
 
 export function CheckoutPageClient() {
-  const router = useRouter()
-  const { clearCart, items, subtotal } = useCart()
-  const { showError, showSuccess } = useToast()
+  const { items, subtotal } = useCart()
+  const { showError } = useToast()
   const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0)
   const distinctProducts = items.length
   const [stockErrorProductName, setStockErrorProductName] = useState<string | null>(null)
@@ -56,10 +54,7 @@ export function CheckoutPageClient() {
       clearErrors('root')
       setStockErrorProductName(null)
       const response = await createOrder(buildCreateOrderRequest(items, values))
-
-      clearCart({ silent: true })
-      showSuccess('La orden se creó correctamente.')
-      router.push(getCheckoutConfirmationPath(response))
+      window.location.assign(response.initPoint)
     } catch (error) {
       const fallbackMessage = error instanceof Error ? error.message : 'No se pudo completar la orden.'
       const highlightedProduct =
@@ -139,7 +134,7 @@ export function CheckoutPageClient() {
           {errors.root?.message ? <p className="text-sm font-bold text-red-600">{errors.root.message}</p> : null}
 
           <button className="rounded-full bg-brand-orange px-6 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={isSubmitting} type="submit">
-            {isSubmitting ? 'Confirmando...' : 'Confirmar orden'}
+            {isSubmitting ? 'Redirigiendo al pago...' : 'Pagar con Mercado Pago'}
           </button>
         </form>
       </section>

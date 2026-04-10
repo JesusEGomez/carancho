@@ -6,6 +6,23 @@ import { useOrder } from '@/hooks/admin/useAdminOrders'
 import { formatCurrency } from '@/lib/formatCurrency'
 import type { ProductRecord } from '@/services/adminApi'
 
+const ORDER_STATUS_LABELS = {
+  cancelled: 'Cancelada',
+  confirmed: 'Confirmada',
+  draft: 'Borrador',
+  fulfillment_blocked: 'Bloqueada por stock',
+  pending_payment: 'Pendiente de pago',
+} as const
+
+const PAYMENT_STATUS_LABELS = {
+  approved: 'Aprobado',
+  cancelled: 'Cancelado',
+  charged_back: 'Contracargo',
+  pending: 'Pendiente',
+  rejected: 'Rechazado',
+  refunded: 'Reintegrado',
+} as const
+
 function relation(value: ProductRecord | number | null | undefined) {
   return typeof value === 'object' && value !== null ? value : null
 }
@@ -38,10 +55,10 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
         </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <DetailCard label="Estado interno" value={order.status} />
+          <DetailCard label="Estado interno" value={ORDER_STATUS_LABELS[order.status]} />
           <DetailCard label="Total" value={formatCurrency(order.total)} />
           <DetailCard label="Proveedor de pago" value={order.paymentProvider ?? '-'} />
-          <DetailCard label="Estado de pago" value={order.paymentStatus ?? '-'} />
+          <DetailCard label="Estado de pago" value={order.paymentStatus ? PAYMENT_STATUS_LABELS[order.paymentStatus] : '-'} />
         </div>
       </section>
 

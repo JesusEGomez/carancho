@@ -39,6 +39,10 @@ export const Orders: CollectionConfig = {
           value: 'confirmed',
         },
         {
+          label: 'Fulfillment Blocked',
+          value: 'fulfillment_blocked',
+        },
+        {
           label: 'Cancelled',
           value: 'cancelled',
         },
@@ -139,6 +143,14 @@ export const Orders: CollectionConfig = {
         {
           label: 'Cancelled',
           value: 'cancelled',
+        },
+        {
+          label: 'Refunded',
+          value: 'refunded',
+        },
+        {
+          label: 'Charged Back',
+          value: 'charged_back',
         },
       ],
     },
