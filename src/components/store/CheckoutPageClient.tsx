@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useRef, useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 
-import { buildCreateOrderRequest } from '@/lib/checkout-client'
+import { createWhatsAppTabHandle, openWhatsAppLink, type WhatsAppTabHandle } from '@/lib/alerts/whatsapp-client'
+import { buildCreateOrderRequest, buildOrderConfirmationPath } from '@/lib/checkout-client'
 import { CHECKOUT_ERROR_CODES } from '@/lib/checkout-errors'
-import { createOrder } from '@/services/store/checkoutApi'
+import { createOrder, createWhatsAppOrder } from '@/services/store/checkoutApi'
 import { checkoutFormSchema, type CheckoutFormData } from '@/lib/checkout-schema'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useCart } from '@/providers/CartProvider'
@@ -14,17 +16,21 @@ import { useToast } from '@/providers/ToastProvider'
 import { ApiError } from '@/lib/client/api'
 
 export function CheckoutPageClient() {
-  const { items, subtotal } = useCart()
+  const router = useRouter()
+  const { clearCart, items, subtotal } = useCart()
   const { showError } = useToast()
   const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0)
   const distinctProducts = items.length
   const [stockErrorProductName, setStockErrorProductName] = useState<string | null>(null)
+  const [submitChannel, setSubmitChannel] = useState<'mercadopago' | 'whatsapp' | null>(null)
+  const pendingWhatsAppTabRef = useRef<WhatsAppTabHandle | null>(null)
   const {
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
     handleSubmit,
     register,
     setError,
     clearErrors,
+    watch,
   } = useForm<CheckoutFormData>({
     defaultValues: {
       customerEmail: '',
@@ -34,8 +40,19 @@ export function CheckoutPageClient() {
       deliveryCity: '',
       deliveryNotes: '',
     },
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     resolver: zodResolver(checkoutFormSchema) as Resolver<CheckoutFormData>,
   })
+  const watchedValues = watch()
+  const requiredFieldsCompleted = [
+    watchedValues.customerName,
+    watchedValues.customerEmail,
+    watchedValues.customerPhone,
+    watchedValues.deliveryCity,
+    watchedValues.deliveryAddress,
+  ].every((value) => value?.trim())
+  const checkoutActionsDisabled = isSubmitting || !requiredFieldsCompleted || !isValid
 
   if (!items.length) {
     return (
@@ -49,30 +66,61 @@ export function CheckoutPageClient() {
     )
   }
 
+  const handleCheckoutError = (error: unknown) => {
+    const fallbackMessage = error instanceof Error ? error.message : 'No se pudo completar la orden.'
+    const highlightedProduct =
+      error instanceof ApiError && error.code === CHECKOUT_ERROR_CODES.OUT_OF_STOCK ? error.meta?.productName ?? null : null
+    const message =
+      error instanceof ApiError && error.code === CHECKOUT_ERROR_CODES.OUT_OF_STOCK
+        ? `${error.message} Ajustá el carrito y volvé a intentar.`
+        : fallbackMessage
+    setStockErrorProductName(highlightedProduct)
+    setError('root', {
+      message,
+      type: error instanceof ApiError ? (error.code ?? 'server').toLowerCase() : 'server',
+    })
+    showError(message)
+  }
+
   const submitCheckout = async (values: CheckoutFormData) => {
     try {
+      setSubmitChannel('mercadopago')
       clearErrors('root')
       setStockErrorProductName(null)
       const response = await createOrder(buildCreateOrderRequest(items, values))
       window.location.assign(response.initPoint)
     } catch (error) {
-      const fallbackMessage = error instanceof Error ? error.message : 'No se pudo completar la orden.'
-      const highlightedProduct =
-        error instanceof ApiError && error.code === CHECKOUT_ERROR_CODES.OUT_OF_STOCK ? error.meta?.productName ?? null : null
-      const message =
-        error instanceof ApiError && error.code === CHECKOUT_ERROR_CODES.OUT_OF_STOCK
-          ? `${error.message} Ajustá el carrito y volvé a intentar.`
-          : fallbackMessage
-      setStockErrorProductName(highlightedProduct)
-      setError('root', {
-        message,
-        type: error instanceof ApiError ? (error.code ?? 'server').toLowerCase() : 'server',
-      })
-      showError(message)
+      handleCheckoutError(error)
+    } finally {
+      setSubmitChannel(null)
+    }
+  }
+
+  const submitWhatsAppCheckout = async (values: CheckoutFormData) => {
+    try {
+      setSubmitChannel('whatsapp')
+      clearErrors('root')
+      setStockErrorProductName(null)
+      const response = await createWhatsAppOrder(buildCreateOrderRequest(items, values))
+      if (pendingWhatsAppTabRef.current) {
+        pendingWhatsAppTabRef.current.redirect(response.whatsappUrl)
+        pendingWhatsAppTabRef.current = null
+      } else {
+        openWhatsAppLink({ url: response.whatsappUrl })
+      }
+      clearCart({ silent: true })
+      router.push(buildOrderConfirmationPath(response.orderId, response.confirmationToken))
+    } catch (error) {
+      pendingWhatsAppTabRef.current?.close()
+      pendingWhatsAppTabRef.current = null
+      handleCheckoutError(error)
+    } finally {
+      setSubmitChannel(null)
     }
   }
 
   const onSubmit = handleSubmit(submitCheckout)
+  const onWhatsAppSubmit = handleSubmit(submitWhatsAppCheckout)
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
@@ -132,10 +180,33 @@ export function CheckoutPageClient() {
           </div>
 
           {errors.root?.message ? <p className="text-sm font-bold text-red-600">{errors.root.message}</p> : null}
+          {checkoutActionsDisabled ? (
+            <p className="text-sm font-bold text-slate-400">
+              Completá los datos obligatorios para habilitar el pago y el pedido por WhatsApp.
+            </p>
+          ) : null}
 
-          <button className="rounded-full bg-brand-orange px-6 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={isSubmitting} type="submit">
-            {isSubmitting ? 'Redirigiendo al pago...' : 'Pagar con Mercado Pago'}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              className="rounded-full bg-brand-orange px-6 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-50"
+              disabled={checkoutActionsDisabled}
+              type="submit"
+            >
+              {isSubmitting && submitChannel === 'mercadopago' ? 'Redirigiendo al pago...' : 'Pagar con Mercado Pago'}
+            </button>
+            <button
+              className="rounded-full border border-brand-orange px-6 py-3 text-sm font-black text-brand-orange disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+              disabled={checkoutActionsDisabled}
+              onClick={() => {
+                pendingWhatsAppTabRef.current?.close()
+                pendingWhatsAppTabRef.current = createWhatsAppTabHandle()
+                void onWhatsAppSubmit()
+              }}
+              type="button"
+            >
+              {isSubmitting && submitChannel === 'whatsapp' ? 'Preparando WhatsApp...' : 'Pedir por WhatsApp'}
+            </button>
+          </div>
         </form>
       </section>
 

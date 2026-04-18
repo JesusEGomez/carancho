@@ -69,7 +69,7 @@ export type OrderItemRecord = {
 
 export type OrderRecord = {
   id: number
-  status: 'draft' | 'pending_payment' | 'confirmed' | 'fulfillment_blocked' | 'cancelled'
+  status: 'draft' | 'pending_payment' | 'pending_whatsapp' | 'confirmed' | 'fulfillment_blocked' | 'cancelled'
   currency: string
   subtotal: number
   total: number
@@ -80,7 +80,7 @@ export type OrderRecord = {
   deliveryAddress: string
   deliveryNotes?: string | null
   confirmationToken: string
-  paymentProvider?: 'mercadopago' | null
+  paymentProvider?: 'mercadopago' | 'whatsapp' | null
   paymentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'refunded' | 'charged_back' | null
   externalReference?: string | null
   providerPreferenceId?: string | null
@@ -174,5 +174,26 @@ export async function fetchOrders() {
 
 export async function fetchOrder(id: string) {
   const response = await api.get<OrderRecord>(`/orders/${id}?depth=1`)
+  return response.data
+}
+
+export async function saveOrderStatus({
+  id,
+  paymentProvider,
+  status,
+}: {
+  id: string
+  paymentProvider?: OrderRecord['paymentProvider']
+  status: OrderRecord['status']
+}) {
+  const payload: Partial<OrderRecord> & { status: OrderRecord['status'] } = {
+    status,
+  }
+
+  if (paymentProvider === 'whatsapp' && status === 'confirmed') {
+    payload.paymentStatus = 'approved'
+  }
+
+  const response = await api.patch<OrderRecord>(`/orders/${id}`, payload)
   return response.data
 }

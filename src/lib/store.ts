@@ -126,13 +126,50 @@ export async function getFeaturedProducts(limit = 8) {
   }
 }
 
-export async function getCatalogData(search?: string, categorySlug?: string, page = 1) {
-  const where: Where = {}
+const DEFAULT_PRICE_RANGE_MAX = 50000
+const SORT_OPTIONS = {
+  newest: '-createdAt',
+  featured: '-isFeatured',
+  priceAsc: 'price',
+  priceDesc: '-price',
+} as const
+
+export type CatalogSort = keyof typeof SORT_OPTIONS
+
+const DEFAULT_CATALOG_SORT: CatalogSort = 'featured'
+
+const buildCombinedWhere = (...conditions: Array<Where | null>) => {
+  const validConditions = conditions.filter(Boolean) as Where[]
+
+  if (!validConditions.length) {
+    return {}
+  }
+
+  if (validConditions.length === 1) {
+    return validConditions[0]
+  }
+
+  return {
+    and: validConditions,
+  } satisfies Where
+}
+
+export async function getCatalogData(
+  search?: string,
+  categorySlug?: string,
+  page = 1,
+  maxPrice?: string,
+  sort?: string,
+) {
+  const baseWhere: Where = {}
   const normalizedSearch = search?.trim() ?? ''
   const currentPage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
+  const requestedMaxPrice = Number(maxPrice)
+  const hasRequestedMaxPrice = Number.isFinite(requestedMaxPrice) && requestedMaxPrice > 0
+  const activeSort: CatalogSort = sort && sort in SORT_OPTIONS ? (sort as CatalogSort) : DEFAULT_CATALOG_SORT
 
   if (normalizedSearch) {
-    where.or = [
+    baseWhere.or = [
       {
         name: {
           contains: normalizedSearch,
@@ -147,7 +184,7 @@ export async function getCatalogData(search?: string, categorySlug?: string, pag
   }
 
   const previewSelectedCategory = previewCategories.find((category) => category.slug === categorySlug)
-  const fallbackProducts = (previewSelectedCategory
+  const fallbackBaseProducts = (previewSelectedCategory
     ? previewProducts.filter((product) => product.category.slug === previewSelectedCategory.slug)
     : previewProducts
   ).filter((product) => {
@@ -163,6 +200,14 @@ export async function getCatalogData(search?: string, categorySlug?: string, pag
       product.shortDescription.toLowerCase().includes(term)
     )
   })
+  const fallbackPriceRangeMax = Math.max(
+    DEFAULT_PRICE_RANGE_MAX,
+    ...fallbackBaseProducts.map((product) => product.price),
+  )
+  const fallbackActiveMaxPrice = hasRequestedMaxPrice
+    ? Math.min(Math.floor(requestedMaxPrice), fallbackPriceRangeMax)
+    : fallbackPriceRangeMax
+  const fallbackProducts = fallbackBaseProducts.filter((product) => product.price <= fallbackActiveMaxPrice)
   const fallbackTotalPages = Math.max(1, Math.ceil(fallbackProducts.length / CATALOG_PAGE_SIZE))
   const fallbackPage = Math.min(currentPage, fallbackTotalPages)
   const fallbackPageProducts = fallbackProducts.slice(
@@ -177,8 +222,11 @@ export async function getCatalogData(search?: string, categorySlug?: string, pag
     const selectedCategory = previewCategories.find((category) => category.slug === categorySlug) ?? null
 
     return {
+      activeSort,
       categories: parentCategories,
       currentPage: fallbackPage,
+      maxPriceRange: fallbackPriceRangeMax,
+      activeMaxPrice: fallbackActiveMaxPrice,
       products: fallbackPageProducts,
       selectedCategory: selectedCategory ?? previewSelectedCategory ?? null,
       selectedParentCategory: selectedCategory ?? previewSelectedCategory ?? null,
@@ -216,15 +264,38 @@ export async function getCatalogData(search?: string, categorySlug?: string, pag
 
     if (selectedCategory) {
       if (selectedCategory.parent) {
-        where.category = {
+        baseWhere.category = {
           equals: selectedCategory.id,
         }
       } else {
-        where.category = {
+        baseWhere.category = {
           in: [selectedCategory.id, ...selectedSubcategories.map((category) => category.id)],
         }
       }
     }
+
+    const maxPriceResult = await payload.find({
+      collection: 'products',
+      depth: 0,
+      limit: 1,
+      overrideAccess: false,
+      sort: '-price',
+      where: baseWhere,
+    })
+    const payloadPriceRangeMax = Math.max(DEFAULT_PRICE_RANGE_MAX, maxPriceResult.docs[0]?.price ?? 0)
+    const activeMaxPrice = hasRequestedMaxPrice
+      ? Math.min(Math.floor(requestedMaxPrice), payloadPriceRangeMax)
+      : payloadPriceRangeMax
+    const where = buildCombinedWhere(
+      baseWhere,
+      activeMaxPrice < payloadPriceRangeMax
+        ? {
+            price: {
+              less_than_equal: activeMaxPrice,
+            },
+          }
+        : null,
+    )
 
     const productsResult = await payload.find({
       collection: 'products',
@@ -232,13 +303,16 @@ export async function getCatalogData(search?: string, categorySlug?: string, pag
       limit: CATALOG_PAGE_SIZE,
       overrideAccess: false,
       page: currentPage,
-      sort: '-createdAt',
+      sort: SORT_OPTIONS[activeSort],
       where,
     })
 
     return {
+      activeSort,
       categories: topLevelCategories,
       currentPage: productsResult.page,
+      maxPriceRange: payloadPriceRangeMax,
+      activeMaxPrice,
       products: productsResult.docs.map(normalizeProduct),
       selectedCategory: selectedCategory ?? previewSelectedCategory ?? null,
       selectedParentCategory,
@@ -250,8 +324,11 @@ export async function getCatalogData(search?: string, categorySlug?: string, pag
   } catch (error) {
     console.error('Failed to load catalog data from Payload, using preview data.', error)
     return {
+      activeSort,
       categories: previewCategories,
       currentPage: fallbackPage,
+      maxPriceRange: fallbackPriceRangeMax,
+      activeMaxPrice: fallbackActiveMaxPrice,
       products: fallbackPageProducts,
       selectedCategory: previewSelectedCategory ?? null,
       selectedParentCategory: previewSelectedCategory ?? null,

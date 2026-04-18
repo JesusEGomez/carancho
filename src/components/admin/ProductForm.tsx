@@ -592,7 +592,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-brand-ink">
             <input type="checkbox" {...register('isFeatured')} />
-            Destacado
+            Mostrar en destacados
           </label>
           {(['nuevo', 'oferta', 'destacado'] as const).map((badge) => (
             <label

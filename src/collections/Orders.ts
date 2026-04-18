@@ -35,6 +35,10 @@ export const Orders: CollectionConfig = {
           value: 'pending_payment',
         },
         {
+          label: 'Pending WhatsApp',
+          value: 'pending_whatsapp',
+        },
+        {
           label: 'Confirmed',
           value: 'confirmed',
         },
@@ -121,6 +125,10 @@ export const Orders: CollectionConfig = {
         {
           label: 'Mercado Pago',
           value: 'mercadopago',
+        },
+        {
+          label: 'WhatsApp',
+          value: 'whatsapp',
         },
       ],
     },

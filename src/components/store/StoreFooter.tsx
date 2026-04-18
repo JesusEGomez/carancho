@@ -105,13 +105,13 @@ export function StoreFooter() {
           <div>
             <div className="mb-4 flex items-center gap-2">
               <Image
-                alt="Carancho Pesca Deportiva"
+                alt="Carancho Outdoors"
                 className="h-8 w-8 rounded-full object-cover"
                 height={32}
                 src="/images/brand/carancho-logo.jpg"
                 width={32}
               />
-              <span className="text-lg font-extrabold">CARANCHO PESCA</span>
+              <span className="text-lg font-extrabold">CARANCHO OUTDOORS</span>
             </div>
             <p className="text-sm leading-relaxed opacity-70">
               Pasión por la pesca deportiva y dedicación a tu hogar. Ofrecemos los mejores productos con atención personalizada.
@@ -157,7 +157,7 @@ export function StoreFooter() {
         </div>
 
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/20 pt-6 text-xs opacity-50 sm:flex-row">
-          <p>© 2025 Carancho Pesca Deportiva. Todos los derechos reservados.</p>
+          <p>© 2025 Carancho Outdoors. Todos los derechos reservados.</p>
           <div className="flex gap-4">
             <a href="#">Términos y Condiciones</a>
             <a href="#">Privacidad</a>

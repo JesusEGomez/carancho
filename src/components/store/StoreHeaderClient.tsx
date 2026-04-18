@@ -43,7 +43,7 @@ function CloseIcon() {
   )
 }
 
-export function StoreHeaderClient() {
+export function StoreHeaderClient({ showSearch = true }: { showSearch?: boolean }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -82,15 +82,13 @@ export function StoreHeaderClient() {
         <div className="flex items-center justify-between gap-4">
           <Link className="flex shrink-0 items-center gap-3" href="/">
             <Image
-              alt="Carancho Pesca Deportiva"
+              alt="Carancho Outdoors"
               className="h-10 w-10 rounded-full object-cover"
               height={40}
               src="/images/brand/carancho-logo.jpg"
               width={40}
             />
-            <span className="text-xl font-extrabold tracking-tight text-brand-ink">
-              CARANCHO <span className="text-brand-orange">PESCA</span>
-            </span>
+            <span className="text-xl font-extrabold tracking-tight text-brand-ink">CARANCHO OUTDOORS</span>
           </Link>
 
           <nav className="hidden items-center gap-6 md:flex">
@@ -107,17 +105,21 @@ export function StoreHeaderClient() {
             ))}
           </nav>
 
-          <form action="/productos" className="relative hidden max-w-sm flex-1 sm:flex">
-            <input
-              className="w-full rounded-lg bg-[#f1eeea] py-2.5 pl-10 pr-4 text-sm text-brand-ink placeholder:text-slate-500 focus:ring-2 focus:ring-brand-orange focus:outline-none"
-              name="q"
-              placeholder="Buscar productos..."
-              type="search"
-            />
-            <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
-              <SearchIcon />
-            </div>
-          </form>
+          {showSearch ? (
+            <form action="/productos" className="relative hidden max-w-sm flex-1 sm:flex">
+              <input
+                className="w-full rounded-lg bg-[#f1eeea] py-2.5 pl-10 pr-4 text-sm text-brand-ink placeholder:text-slate-500 focus:ring-2 focus:ring-brand-orange focus:outline-none"
+                name="q"
+                placeholder="Buscar productos..."
+                type="search"
+              />
+              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                <SearchIcon />
+              </div>
+            </form>
+          ) : (
+            <div className="hidden flex-1 sm:block" />
+          )}
 
           <div className="flex items-center gap-3">
             <Link className="relative rounded-lg p-2 transition-colors hover:bg-[#f1eeea]" href="/carrito">

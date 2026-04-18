@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { CheckoutConfirmationActions } from '@/components/store/CheckoutConfirmationActions'
 import { StoreFooter } from '@/components/store/StoreFooter'
 import { StoreHeader } from '@/components/store/StoreHeader'
 import { formatCurrency } from '@/lib/formatCurrency'
@@ -30,16 +30,21 @@ export default async function CheckoutConfirmationPage({ params, searchParams }:
     notFound()
   }
 
+  const isWhatsAppOrder = order.paymentProvider === 'whatsapp'
+  const eyebrow = isWhatsAppOrder ? 'Pedido recibido' : 'Orden confirmada'
+  const title = isWhatsAppOrder ? 'Tu pedido ya quedó registrado.' : 'Recibimos tu pedido y ya quedó registrado.'
+  const description = isWhatsAppOrder
+    ? `Abrimos WhatsApp en otra pestaña para que nos envíes el mensaje con la orden #${order.id}. Si no ves el chat, podés abrir WhatsApp nuevamente desde tus pestañas.`
+    : `Te vamos a contactar a ${order.customerEmail} para coordinar entrega y próximos pasos.`
+
   return (
     <div className="min-h-screen bg-[#fbf7f1]">
       <StoreHeader />
       <div className="container-shell py-8 sm:py-10">
         <section className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_12px_32px_rgba(28,28,28,0.06)]">
-          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Orden confirmada</p>
-          <h1 className="mt-3 text-4xl font-black text-brand-ink">Recibimos tu pedido y ya quedó registrado.</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-            Te vamos a contactar a {order.customerEmail} para coordinar entrega y próximos pasos.
-          </p>
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">{eyebrow}</p>
+          <h1 className="mt-3 text-4xl font-black text-brand-ink">{title}</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
 
           <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-[22px] border border-slate-100 bg-[#fbf7f1] p-5">
@@ -85,14 +90,7 @@ export default async function CheckoutConfirmationPage({ params, searchParams }:
             </aside>
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link className="rounded-full bg-brand-orange px-5 py-3 text-sm font-black text-white" href="/productos">
-              Seguir comprando
-            </Link>
-            <Link className="rounded-full border border-slate-200 px-5 py-3 text-sm font-black text-brand-ink" href="/">
-              Volver al inicio
-            </Link>
-          </div>
+          <CheckoutConfirmationActions />
         </section>
       </div>
       <StoreFooter />

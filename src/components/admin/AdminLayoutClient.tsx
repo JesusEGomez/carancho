@@ -58,7 +58,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <br />
               Center
             </p>
-            <p className="mt-2 text-xs font-black uppercase tracking-[0.2em] text-slate-400">Carancho Admin</p>
+            <p className="mt-2 text-xs font-black uppercase tracking-[0.2em] text-slate-400">Carancho Outdoors</p>
           </div>
 
           <div className="px-5 pt-6">
