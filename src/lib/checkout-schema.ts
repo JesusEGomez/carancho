@@ -29,6 +29,12 @@ export type CreateOrderResponse = {
   preferenceId: string
 }
 
+export type CreateWhatsAppOrderResponse = {
+  confirmationToken: string
+  orderId: number
+  whatsappUrl: string
+}
+
 export type CheckoutStatusResponse = {
   confirmationToken: string
   customerEmail: string
@@ -47,11 +53,11 @@ export type CheckoutStatusResponse = {
     quantity: number
     unitPrice: number
   }[]
-  paymentProvider?: 'mercadopago' | null
+  paymentProvider?: 'mercadopago' | 'whatsapp' | null
   paymentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'refunded' | 'charged_back' | null
   providerPaymentId?: string | null
   providerPreferenceId?: string | null
   providerRawStatus?: string | null
-  status: 'draft' | 'pending_payment' | 'confirmed' | 'fulfillment_blocked' | 'cancelled'
+  status: 'draft' | 'pending_payment' | 'pending_whatsapp' | 'confirmed' | 'fulfillment_blocked' | 'cancelled'
   total: number
 }

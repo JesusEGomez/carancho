@@ -2,6 +2,7 @@ export const CHECKOUT_ERROR_CODES = {
   OUT_OF_STOCK: 'OUT_OF_STOCK',
   PAYMENT_UNAVAILABLE: 'PAYMENT_UNAVAILABLE',
   PRODUCT_UNAVAILABLE: 'PRODUCT_UNAVAILABLE',
+  WHATSAPP_UNAVAILABLE: 'WHATSAPP_UNAVAILABLE',
 } as const
 
 export type CheckoutErrorCode = (typeof CHECKOUT_ERROR_CODES)[keyof typeof CHECKOUT_ERROR_CODES]
@@ -46,6 +47,14 @@ export function createPaymentUnavailableError() {
   return new CheckoutDomainError(
     CHECKOUT_ERROR_CODES.PAYMENT_UNAVAILABLE,
     'El medio de pago no está disponible en este momento. Intentá nuevamente en unos minutos.',
+    503,
+  )
+}
+
+export function createWhatsAppUnavailableError() {
+  return new CheckoutDomainError(
+    CHECKOUT_ERROR_CODES.WHATSAPP_UNAVAILABLE,
+    'WhatsApp no está disponible en este momento. Verificá el teléfono de la tienda o intentá nuevamente más tarde.',
     503,
   )
 }

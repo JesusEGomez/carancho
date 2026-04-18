@@ -10,3 +10,11 @@ export function buildCreateOrderRequest(items: CartLine[], customer: CheckoutFor
     })),
   }
 }
+
+export function buildOrderConfirmationPath(orderId: number, confirmationToken: string) {
+  const query = new URLSearchParams({
+    token: confirmationToken,
+  })
+
+  return `/checkout/confirmacion/${orderId}?${query.toString()}`
+}

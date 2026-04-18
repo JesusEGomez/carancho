@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 
-import { useOrder } from '@/hooks/admin/useAdminOrders'
+import { useOrder, useUpdateOrderStatus } from '@/hooks/admin/useAdminOrders'
 import { formatCurrency } from '@/lib/formatCurrency'
+import { useToast } from '@/providers/ToastProvider'
 import type { ProductRecord } from '@/services/adminApi'
 
 const ORDER_STATUS_LABELS = {
@@ -12,6 +13,7 @@ const ORDER_STATUS_LABELS = {
   draft: 'Borrador',
   fulfillment_blocked: 'Bloqueada por stock',
   pending_payment: 'Pendiente de pago',
+  pending_whatsapp: 'Pendiente por WhatsApp',
 } as const
 
 const PAYMENT_STATUS_LABELS = {
@@ -29,8 +31,28 @@ function relation(value: ProductRecord | number | null | undefined) {
 
 export function AdminOrderDetailClient({ id }: { id: string }) {
   const orderQuery = useOrder(id)
+  const updateOrderStatus = useUpdateOrderStatus()
+  const { showError } = useToast()
   const order = orderQuery.data
   const error = orderQuery.error?.message ?? null
+
+  const canFinalizeOrder = order?.status === 'pending_whatsapp'
+
+  const handleFinalizeOrder = async () => {
+    if (!order) {
+      return
+    }
+
+    try {
+      await updateOrderStatus.mutateAsync({
+        id: String(order.id),
+        paymentProvider: order.paymentProvider,
+        status: 'confirmed',
+      })
+    } catch (mutationError) {
+      showError(mutationError instanceof Error ? mutationError.message : 'No se pudo finalizar la orden.')
+    }
+  }
 
   if (orderQuery.isLoading) {
     return <div className="rounded-[28px] border border-[#e9edf5] bg-white px-6 py-8 text-sm font-bold text-slate-500">Cargando orden...</div>
@@ -49,15 +71,29 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
             <h1 className="mt-2 text-4xl font-black text-brand-ink">{order.customerName}</h1>
             <p className="mt-2 text-sm text-slate-500">{order.customerEmail}</p>
           </div>
-          <Link className="rounded-full border border-slate-200 px-5 py-3 text-sm font-black text-brand-ink" href="/admin/ordenes">
-            Volver
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            {canFinalizeOrder ? (
+              <button
+                className="rounded-full bg-brand-orange px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={updateOrderStatus.isPending}
+                onClick={() => {
+                  void handleFinalizeOrder()
+                }}
+                type="button"
+              >
+                {updateOrderStatus.isPending ? 'Finalizando...' : 'Dar por finalizada'}
+              </button>
+            ) : null}
+            <Link className="rounded-full border border-slate-200 px-5 py-3 text-sm font-black text-brand-ink" href="/admin/ordenes">
+              Volver
+            </Link>
+          </div>
         </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <DetailCard label="Estado interno" value={ORDER_STATUS_LABELS[order.status]} />
           <DetailCard label="Total" value={formatCurrency(order.total)} />
-          <DetailCard label="Proveedor de pago" value={order.paymentProvider ?? '-'} />
+          <DetailCard label="Canal" value={order.paymentProvider === 'whatsapp' ? 'WhatsApp' : order.paymentProvider ?? '-'} />
           <DetailCard label="Estado de pago" value={order.paymentStatus ? PAYMENT_STATUS_LABELS[order.paymentStatus] : '-'} />
         </div>
       </section>
@@ -98,15 +134,27 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
             {order.deliveryNotes ? <p className="mt-4 text-sm text-slate-500">Notas: {order.deliveryNotes}</p> : null}
           </article>
 
-          <article className="rounded-[28px] border border-[#e9edf5] bg-white p-6 shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Reservado para pagos</p>
-            <div className="mt-4 space-y-3 text-sm">
-              <p className="text-slate-500">externalReference: <span className="font-bold text-brand-ink">{order.externalReference ?? '-'}</span></p>
-              <p className="text-slate-500">providerPreferenceId: <span className="font-bold text-brand-ink">{order.providerPreferenceId ?? '-'}</span></p>
-              <p className="text-slate-500">providerPaymentId: <span className="font-bold text-brand-ink">{order.providerPaymentId ?? '-'}</span></p>
-              <p className="text-slate-500">providerRawStatus: <span className="font-bold text-brand-ink">{order.providerRawStatus ?? '-'}</span></p>
-            </div>
-          </article>
+          {order.paymentProvider === 'mercadopago' ? (
+            <article className="rounded-[28px] border border-[#e9edf5] bg-white p-6 shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Datos de pago</p>
+              <div className="mt-4 space-y-3 text-sm">
+                <p className="text-slate-500">externalReference: <span className="font-bold text-brand-ink">{order.externalReference ?? '-'}</span></p>
+                <p className="text-slate-500">providerPreferenceId: <span className="font-bold text-brand-ink">{order.providerPreferenceId ?? '-'}</span></p>
+                <p className="text-slate-500">providerPaymentId: <span className="font-bold text-brand-ink">{order.providerPaymentId ?? '-'}</span></p>
+                <p className="text-slate-500">providerRawStatus: <span className="font-bold text-brand-ink">{order.providerRawStatus ?? '-'}</span></p>
+              </div>
+            </article>
+          ) : (
+            <article className="rounded-[28px] border border-[#e9edf5] bg-white p-6 shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Gestión manual</p>
+              <p className="mt-4 text-sm text-slate-500">
+                Este pedido ingresó por WhatsApp y queda pendiente de contacto/confirmación manual por parte del equipo.
+              </p>
+              {canFinalizeOrder ? (
+                <p className="mt-3 text-sm text-slate-500">Cuando se concrete con el cliente, podés marcarlo como finalizado para confirmar la orden y descontar stock.</p>
+              ) : null}
+            </article>
+          )}
         </aside>
       </section>
     </div>

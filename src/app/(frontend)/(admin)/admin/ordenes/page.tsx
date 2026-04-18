@@ -11,6 +11,7 @@ const ORDER_STATUS_LABELS = {
   draft: 'Borrador',
   fulfillment_blocked: 'Bloqueada por stock',
   pending_payment: 'Pendiente de pago',
+  pending_whatsapp: 'Pendiente por WhatsApp',
 } as const
 
 const PAYMENT_STATUS_LABELS = {
@@ -32,7 +33,7 @@ export default function AdminOrdersPage() {
       <div className="flex flex-col gap-4 border-b border-[#edf0f5] px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Órdenes</p>
-          <h1 className="mt-2 text-4xl font-black text-brand-ink">Checkout Mercado Pago</h1>
+          <h1 className="mt-2 text-4xl font-black text-brand-ink">Pedidos multicanal</h1>
         </div>
       </div>
 
@@ -44,6 +45,7 @@ export default function AdminOrdersPage() {
               <th className="px-6 py-4">Cliente</th>
               <th className="px-6 py-4">Items</th>
               <th className="px-6 py-4">Total</th>
+              <th className="px-6 py-4">Canal</th>
               <th className="px-6 py-4">Estado</th>
               <th className="px-6 py-4">Pago</th>
               <th className="px-6 py-4 text-right">Detalle</th>
@@ -62,6 +64,7 @@ export default function AdminOrdersPage() {
                 </td>
                 <td className="px-6 py-4 text-slate-500">{order.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0}</td>
                 <td className="px-6 py-4 font-bold text-brand-ink">{formatCurrency(order.total)}</td>
+                <td className="px-6 py-4 text-slate-500">{order.paymentProvider === 'whatsapp' ? 'WhatsApp' : 'Mercado Pago'}</td>
                 <td className="px-6 py-4">
                   <span className="rounded-full bg-[#fff7f1] px-3 py-1 text-xs font-black text-brand-orange">
                     {ORDER_STATUS_LABELS[order.status]}
