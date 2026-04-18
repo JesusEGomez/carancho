@@ -1,11 +1,21 @@
 'use client'
 
 import { api } from '@/lib/client/api'
-import type { CheckoutStatusResponse, CreateOrderRequest, CreateOrderResponse } from '@/lib/checkout-schema'
+import type {
+  CheckoutStatusResponse,
+  CreateOrderRequest,
+  CreateOrderResponse,
+  CreateWhatsAppOrderResponse,
+} from '@/lib/checkout-schema'
 import type { MercadoPagoStatusQuery } from '@/lib/mercadopago/shared'
 
 export async function createOrder(payload: CreateOrderRequest) {
   const response = await api.post<CreateOrderResponse>('/checkout/create', payload)
+  return response.data
+}
+
+export async function createWhatsAppOrder(payload: CreateOrderRequest) {
+  const response = await api.post<CreateWhatsAppOrderResponse>('/checkout/create-whatsapp', payload)
   return response.data
 }
 

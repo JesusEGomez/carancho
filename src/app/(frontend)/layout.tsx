@@ -6,8 +6,8 @@ import { QueryProvider } from '@/providers/QueryProvider'
 import { ToastProvider } from '@/providers/ToastProvider'
 
 export const metadata = {
-  description: 'Carancho Pesca Deportiva: pesca, camping, nautica y hogar.',
-  title: 'Carancho Pesca Deportiva',
+  description: 'Carancho Outdoors: pesca, camping, nautica y hogar.',
+  title: 'Carancho Outdoors',
 }
 
 export default async function RootLayout(props: { children: React.ReactNode }) {

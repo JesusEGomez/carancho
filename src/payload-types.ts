@@ -243,7 +243,7 @@ export interface StoreContact {
  */
 export interface Order {
   id: number;
-  status: 'draft' | 'pending_payment' | 'confirmed' | 'fulfillment_blocked' | 'cancelled';
+  status: 'draft' | 'pending_payment' | 'pending_whatsapp' | 'confirmed' | 'fulfillment_blocked' | 'cancelled';
   currency: string;
   subtotal: number;
   total: number;
@@ -255,7 +255,7 @@ export interface Order {
   deliveryNotes?: string | null;
   confirmationToken: string;
   stockApplied?: boolean | null;
-  paymentProvider?: 'mercadopago' | null;
+  paymentProvider?: ('mercadopago' | 'whatsapp') | null;
   paymentStatus?: ('pending' | 'approved' | 'rejected' | 'cancelled' | 'refunded' | 'charged_back') | null;
   externalReference?: string | null;
   providerPreferenceId?: string | null;

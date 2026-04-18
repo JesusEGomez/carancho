@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(242,197,0,0.30),_transparent_32%),linear-gradient(135deg,#fff8e9_0%,#ffffff_45%,#ffe8d8_100%)] p-6">
       <div className="w-full max-w-md rounded-[32px] border border-[#dfe5ef] bg-white p-8 shadow-[0_25px_70px_rgba(15,23,42,0.10)]">
         <p className="text-xs font-black uppercase tracking-[0.32em] text-brand-orange">Admin Access</p>
-        <h1 className="mt-4 text-5xl font-black tracking-tight text-brand-ink">Carancho Dashboard</h1>
+        <h1 className="mt-4 text-5xl font-black tracking-tight text-brand-ink">Carancho Outdoors</h1>
         <p className="mt-5 text-base leading-8 text-slate-500">
           Ingresar con un usuario admin de Payload para administrar productos y categorías.
         </p>
