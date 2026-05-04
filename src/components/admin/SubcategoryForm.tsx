@@ -54,8 +54,10 @@ export function SubcategoryForm() {
                 description: null,
                 featured: false,
                 heroImage: null,
+                isVisible: true,
                 name: values.name.trim(),
                 parent: values.parentId,
+                showInNavigation: false,
               },
             })
             .then(() => {

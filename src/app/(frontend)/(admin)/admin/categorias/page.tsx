@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 
-import { useCategories } from '@/hooks/admin/useAdminCategories'
+import { useCategories, useToggleCategoryVisibility } from '@/hooks/admin/useAdminCategories'
 import type { CategoryOption } from '@/services/adminApi'
 
 function relation(value: CategoryOption | number | null | undefined) {
@@ -11,8 +11,9 @@ function relation(value: CategoryOption | number | null | undefined) {
 
 export default function AdminCategoriesPage() {
   const categoriesQuery = useCategories()
+  const toggleCategoryVisibilityMutation = useToggleCategoryVisibility()
   const categories = categoriesQuery.data?.docs ?? []
-  const error = categoriesQuery.error?.message ?? null
+  const error = categoriesQuery.error?.message ?? toggleCategoryVisibilityMutation.error?.message ?? null
 
   const parentCategories = categories.filter((category) => !category.parent)
   const subcategoriesByParent = new Map<number, CategoryOption[]>(
@@ -53,9 +54,10 @@ export default function AdminCategoriesPage() {
               <th className="px-6 py-4">Slug</th>
               <th className="px-6 py-4">Tipo</th>
               <th className="px-6 py-4">Padre</th>
+              <th className="px-6 py-4">Tienda</th>
               <th className="px-6 py-4">Navegación</th>
               <th className="px-6 py-4">Destacada</th>
-              <th className="px-6 py-4 text-right">Editar</th>
+              <th className="px-6 py-4 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -77,6 +79,15 @@ export default function AdminCategoriesPage() {
                   <td className="px-6 py-4">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-black ${
+                        category.isVisible ?? true ? 'bg-[#ecfdf3] text-[#15803d]' : 'bg-[#f3f4f6] text-slate-500'
+                      }`}
+                    >
+                      {category.isVisible ?? true ? 'Visible' : 'Oculta'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-black ${
                         category.showInNavigation ? 'bg-[#ecfdf3] text-[#15803d]' : 'bg-[#f3f4f6] text-slate-500'
                       }`}
                     >
@@ -92,10 +103,25 @@ export default function AdminCategoriesPage() {
                       {category.featured ? 'Sí' : 'No'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <Link className="text-sm font-black text-brand-orange" href={`/admin/categorias/${category.id}`}>
-                      Editar
-                    </Link>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-4">
+                      <button
+                        className="text-sm font-black text-slate-500 hover:text-brand-orange disabled:opacity-50"
+                        disabled={toggleCategoryVisibilityMutation.isPending}
+                        onClick={() => {
+                          void toggleCategoryVisibilityMutation.mutateAsync({
+                            id: String(category.id),
+                            isVisible: !(category.isVisible ?? true),
+                          })
+                        }}
+                        type="button"
+                      >
+                        {category.isVisible ?? true ? 'Dar de baja' : 'Dar de alta'}
+                      </button>
+                      <Link className="text-sm font-black text-brand-orange" href={`/admin/categorias/${category.id}`}>
+                        Editar
+                      </Link>
+                    </div>
                   </td>
                 </tr>,
                 ...subcategories.map((subcategory) => (
@@ -110,12 +136,44 @@ export default function AdminCategoriesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-slate-500">{category.name}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-black ${
+                          subcategory.isVisible ?? true ? 'bg-[#ecfdf3] text-[#15803d]' : 'bg-[#f3f4f6] text-slate-500'
+                        }`}
+                      >
+                        {subcategory.isVisible ?? true ? 'Visible' : 'Oculta'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-black ${
+                          subcategory.showInNavigation ? 'bg-[#ecfdf3] text-[#15803d]' : 'bg-[#f3f4f6] text-slate-500'
+                        }`}
+                      >
+                        {subcategory.showInNavigation ? 'Sí' : 'No'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-slate-500">No</td>
-                    <td className="px-6 py-4 text-slate-500">No</td>
-                    <td className="px-6 py-4 text-right">
-                      <Link className="text-sm font-black text-brand-orange" href={`/admin/categorias/${subcategory.id}`}>
-                        Editar
-                      </Link>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-4">
+                        <button
+                          className="text-sm font-black text-slate-500 hover:text-brand-orange disabled:opacity-50"
+                          disabled={toggleCategoryVisibilityMutation.isPending}
+                          onClick={() => {
+                            void toggleCategoryVisibilityMutation.mutateAsync({
+                              id: String(subcategory.id),
+                              isVisible: !(subcategory.isVisible ?? true),
+                            })
+                          }}
+                          type="button"
+                        >
+                          {subcategory.isVisible ?? true ? 'Dar de baja' : 'Dar de alta'}
+                        </button>
+                        <Link className="text-sm font-black text-brand-orange" href={`/admin/categorias/${subcategory.id}`}>
+                          Editar
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 )),

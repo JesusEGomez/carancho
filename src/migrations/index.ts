@@ -7,6 +7,7 @@ import * as migration_20260403_194500_store_contacts_collection from './20260403
 import * as migration_20260404_201500_orders_collection from './20260404_201500_orders_collection';
 import * as migration_20260404_213714_order_payment_status_hardening from './20260404_213714_order_payment_status_hardening';
 import * as migration_20260417_181000_whatsapp_orders_channel from './20260417_181000_whatsapp_orders_channel';
+import * as migration_20260430_111500_category_store_visibility from './20260430_111500_category_store_visibility';
 
 export const migrations = [
   {
@@ -53,5 +54,10 @@ export const migrations = [
     up: migration_20260417_181000_whatsapp_orders_channel.up,
     down: migration_20260417_181000_whatsapp_orders_channel.down,
     name: '20260417_181000_whatsapp_orders_channel'
+  },
+  {
+    up: migration_20260430_111500_category_store_visibility.up,
+    down: migration_20260430_111500_category_store_visibility.down,
+    name: '20260430_111500_category_store_visibility'
   },
 ];

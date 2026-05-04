@@ -51,6 +51,7 @@ export default function EditCategoryPage({ params }: Props) {
     heroImage,
     heroImageId: heroImage?.id ?? (typeof category.heroImage === 'number' ? category.heroImage : null),
     id: category.id,
+    isVisible: category.isVisible ?? true,
     name: category.name,
     parentId: parent?.id ?? (typeof category.parent === 'number' ? category.parent : null),
     showInNavigation: category.showInNavigation ?? false,

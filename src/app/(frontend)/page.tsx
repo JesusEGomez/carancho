@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 import { FeaturedCategoriesCarousel } from '@/components/store/FeaturedCategoriesCarousel'
+import { FloatingSocialButtons } from '@/components/store/FloatingSocialButtons'
 import { StoreBenefitsSection } from '@/components/store/StoreBenefitsSection'
 import { StoreFooter } from '@/components/store/StoreFooter'
 import { HeroCarousel } from '@/components/store/HeroCarousel'
@@ -15,10 +16,11 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-brand-cream">
       <StoreHeader />
+      <FloatingSocialButtons />
 
       <HeroCarousel />
 
-      <section id="categorias" className="pt-16 pb-16 sm:pt-20 sm:pb-20">
+      <section id="categorias" className="bg-[#efebe5] pt-16 pb-16 sm:pt-20 sm:pb-20">
         <div className="container-shell">
           <h2 className="mb-8 text-center text-2xl font-extrabold uppercase tracking-wider text-brand-ink">
             Categorías destacadas
@@ -27,7 +29,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="pb-18">
+      <section className="bg-[#efebe5] pb-18">
         <div className="container-shell">
           <div className="mb-8 flex items-end justify-between gap-5">
             <h2 className="text-[30px] font-black uppercase tracking-tight text-brand-ink sm:text-[34px]">Nuevos ingresos</h2>
@@ -46,7 +48,7 @@ export default async function HomePage() {
 
       <StoreBenefitsSection />
 
-      <section className="bg-white py-16 sm:py-20">
+      <section className="bg-[#e9e4dd] py-16 sm:py-20">
         <div className="container-shell text-center">
           <h2 className="mb-8 text-2xl font-extrabold uppercase tracking-wider text-brand-ink">
             Marcas que nos acompañan

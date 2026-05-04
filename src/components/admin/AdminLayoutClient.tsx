@@ -120,14 +120,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <div>
               <h1 className="text-4xl font-black tracking-tight text-brand-ink">Gestión Comercial</h1>
             </div>
-            <div className="flex gap-3">
-              <Link className="rounded-full border border-[#dfe5ef] bg-white px-5 py-3 text-sm font-black text-brand-ink" href="/admin/categorias/nueva">
-                Nueva Categoría
-              </Link>
-              <Link className="rounded-full bg-brand-orange px-5 py-3 text-sm font-black text-white" href="/admin/productos/nuevo">
-                Nuevo Producto
-              </Link>
-            </div>
           </header>
 
           <main className="flex-1 px-6 pb-8 lg:px-8">{children}</main>

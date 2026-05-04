@@ -35,6 +35,7 @@ const getParentCategoryId = (category: Category | null | undefined) => {
 }
 
 const isTopLevelCategory = (category: Category) => !relation<Category>(category.parent)
+const isStoreVisibleCategory = (category: Category) => category.isVisible !== false
 
 const getPayloadSafely = async () => {
   try {
@@ -66,6 +67,11 @@ export async function getFeaturedCategories(limit?: number) {
         and: [
           {
             featured: {
+              equals: true,
+            },
+          },
+          {
+            isVisible: {
               equals: true,
             },
           },
@@ -241,9 +247,14 @@ export async function getCatalogData(
     const categoriesResult = await payload.find({
       collection: 'categories',
       depth: 1,
-      limit: 50,
+      limit: 200,
       overrideAccess: false,
       sort: 'name',
+      where: {
+        isVisible: {
+          equals: true,
+        },
+      },
     })
 
     const categories = categoriesResult.docs.length
@@ -253,13 +264,25 @@ export async function getCatalogData(
         }))
       : previewCategories
 
-    const topLevelCategories = categories.filter(isTopLevelCategory)
-    const selectedCategory = categories.find((category) => category.slug === categorySlug) ?? null
+    const visibleCategories = categories.filter(isStoreVisibleCategory)
+    const visibleParentIds = new Set(
+      visibleCategories.filter(isTopLevelCategory).map((category) => category.id),
+    )
+    const storefrontCategories = visibleCategories.filter((category) => {
+      if (isTopLevelCategory(category)) {
+        return true
+      }
+
+      const parentId = getCategoryId(category.parent)
+      return parentId ? visibleParentIds.has(parentId) : false
+    })
+    const topLevelCategories = storefrontCategories.filter(isTopLevelCategory)
+    const selectedCategory = storefrontCategories.find((category) => category.slug === categorySlug) ?? null
     const selectedParentCategory = selectedCategory
-      ? categories.find((category) => category.id === getParentCategoryId(selectedCategory)) ?? selectedCategory
+      ? storefrontCategories.find((category) => category.id === getParentCategoryId(selectedCategory)) ?? selectedCategory
       : null
     const selectedSubcategories = selectedParentCategory
-      ? categories.filter((category) => getParentCategoryId(category) === selectedParentCategory.id && category.id !== selectedParentCategory.id)
+      ? storefrontCategories.filter((category) => getParentCategoryId(category) === selectedParentCategory.id && category.id !== selectedParentCategory.id)
       : []
 
     if (selectedCategory) {

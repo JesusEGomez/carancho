@@ -5,16 +5,16 @@
   --color-brand-orange: #f06119;
   --color-brand-yellow: #ffb14a;
   --color-brand-ink: #1c1c1c;
-  --color-brand-cream: #f9f7f6;
+  --color-brand-cream: #efebe5;
   --color-brand-panel: #1c1c1c;
-  --color-brand-border: #ece7df;
+  --color-brand-border: #ddd6cd;
   --font-sans: "Lexend", "Segoe UI", sans-serif;
   --font-display: "Lexend", "Segoe UI", sans-serif;
 }
 
 @layer base {
   :root {
-    --background: 30 20% 97%;
+    --background: 32 16% 91%;
     --foreground: 0 0% 11%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 11%;
@@ -22,16 +22,16 @@
     --popover-foreground: 0 0% 11%;
     --primary: 20 88% 52%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 30 20% 94%;
+    --secondary: 32 12% 88%;
     --secondary-foreground: 0 0% 11%;
-    --muted: 30 10% 94%;
+    --muted: 30 8% 88%;
     --muted-foreground: 220 5% 40%;
     --accent: 20 88% 52%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 30 15% 88%;
-    --input: 30 15% 88%;
+    --border: 30 10% 82%;
+    --input: 30 10% 82%;
     --ring: 20 88% 52%;
     --radius: 0.5rem;
     --success: 142 71% 35%;
@@ -91,7 +91,9 @@
     @apply font-sans antialiased;
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    background-image: radial-gradient(circle at top, rgba(240, 97, 25, 0.06), transparent 28%);
+    background-image:
+      radial-gradient(circle at top, rgba(240, 97, 25, 0.05), transparent 30%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0));
   }
 
   h1,

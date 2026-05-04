@@ -8,6 +8,7 @@ export type CategoryOption = {
   slug: string
   description?: string | null
   featured?: boolean | null
+  isVisible?: boolean | null
   showInNavigation?: boolean | null
   heroImage?: number | MediaRecord | null
   parent?: CategoryOption | number | null
@@ -94,7 +95,7 @@ export type OrderRecord = {
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   const [products, categories, featured, lowStock] = await Promise.all([
     api.get<{ totalDocs: number }>('/products?limit=1'),
-    api.get<{ totalDocs: number }>('/categories?limit=1'),
+    api.get<{ totalDocs: number }>('/categories?limit=1&where[isVisible][equals]=true'),
     api.get<{ totalDocs: number }>('/products?limit=1&where[isFeatured][equals]=true'),
     api.get<{ totalDocs: number }>('/products?limit=1&where[stock][less_than]=5'),
   ])
@@ -151,6 +152,17 @@ export async function saveCategory(id: string | null, payload: Record<string, un
     ? await api.patch<CategoryOption>(`/categories/${id}`, payload)
     : await api.post<CategoryOption>('/categories', payload)
 
+  return response.data
+}
+
+export async function saveCategoryVisibility({
+  id,
+  isVisible,
+}: {
+  id: string
+  isVisible: boolean
+}) {
+  const response = await api.patch<CategoryOption>(`/categories/${id}`, { isVisible })
   return response.data
 }
 

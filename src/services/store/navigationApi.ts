@@ -5,12 +5,13 @@ import type { CategoryOption } from '@/services/adminApi'
 
 export async function fetchNavigationCategories() {
   const query = new URLSearchParams({
-    depth: '0',
-    limit: '50',
+    depth: '1',
+    limit: '200',
     sort: 'name',
-    'where[parent][exists]': 'false',
-    'where[showInNavigation][equals]': 'true',
   })
+
+  query.set('where[isVisible][equals]', 'true')
+  query.set('where[showInNavigation][equals]', 'true')
 
   const response = await api.get<{ docs: CategoryOption[] }>(`/categories?${query.toString()}`)
   return response.data

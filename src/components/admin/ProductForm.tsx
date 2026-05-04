@@ -490,7 +490,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
           <AdminTextarea className="min-h-40" {...register('description')} />
         </AdminField>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 xl:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 p-5">
             <label className="flex items-center gap-3 text-sm font-black text-brand-ink">
               <input type="checkbox" {...register('showFeatures')} />
@@ -504,8 +504,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     <p className="text-sm text-slate-500">Agregá las características que quieras mostrar en la ficha.</p>
                   )}
                   {featuresFieldArray.fields.map((field, index) => (
-                    <div key={field.id} className="flex gap-3">
-                      <div className="w-full">
+                    <div key={field.id} className="flex flex-col gap-3 sm:flex-row">
+                      <div className="min-w-0 flex-1">
                         <AdminInput
                           placeholder="Ej: Mango ergonómico"
                           {...register(`features.${index}.label`)}
@@ -513,7 +513,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                         <AdminFieldError message={errors.features?.[index]?.label?.message} />
                       </div>
                       <button
-                        className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-500"
+                        className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-500 sm:self-start"
                         onClick={() => featuresFieldArray.remove(index)}
                         type="button"
                       >
@@ -549,15 +549,18 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     <p className="text-sm text-slate-500">Agregá pares de título y valor según el producto.</p>
                   )}
                   {specificationsFieldArray.fields.map((field, index) => (
-                    <div key={field.id} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                      <div>
+                    <div
+                      key={field.id}
+                      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-start"
+                    >
+                      <div className="min-w-0">
                         <AdminInput
                           placeholder="Largo"
                           {...register(`specifications.${index}.label`)}
                         />
                         <AdminFieldError message={errors.specifications?.[index]?.label?.message} />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <AdminInput
                           placeholder="2.10 metros"
                           {...register(`specifications.${index}.value`)}
@@ -565,7 +568,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                         <AdminFieldError message={errors.specifications?.[index]?.value?.message} />
                       </div>
                       <button
-                        className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-500"
+                        className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-500 sm:col-span-2 lg:col-span-1 lg:self-start"
                         onClick={() => specificationsFieldArray.remove(index)}
                         type="button"
                       >

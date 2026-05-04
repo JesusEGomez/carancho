@@ -22,6 +22,7 @@ const categoryFormSchema = z
   .object({
     description: z.string().trim().optional(),
     featured: z.boolean().default(false),
+    isVisible: z.boolean().default(true),
     name: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres'),
     showInNavigation: z.boolean().default(false),
   })
@@ -43,6 +44,7 @@ const defaultValues: CategoryFormData = {
   description: '',
   featured: false,
   heroImage: null,
+  isVisible: true,
   name: '',
   showInNavigation: false,
 }
@@ -119,9 +121,10 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
                 description: values.description?.trim() || null,
                 featured: isSubcategory ? false : values.featured,
                 heroImage: initialData?.heroImageId ?? null,
+                isVisible: values.isVisible,
                 name: values.name.trim(),
                 parent: initialData?.parentId ?? null,
-                showInNavigation: isSubcategory ? false : values.showInNavigation,
+                showInNavigation: values.showInNavigation,
               },
             })
             .then(() => {
@@ -142,10 +145,17 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
             </label>
           </AdminField>
 
-          <AdminField error={errors.showInNavigation?.message} label="Mostrar en navegación">
+          <AdminField error={errors.isVisible?.message} label="Visibilidad en tienda">
             <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 font-medium text-brand-ink">
-              <input disabled={isSubcategory} type="checkbox" {...register('showInNavigation')} />
-              {isSubcategory ? 'Disponible solo para categorías principales' : 'Mostrar en header y footer'}
+              <input type="checkbox" {...register('isVisible')} />
+              Mostrar categoría en la tienda
+            </label>
+          </AdminField>
+
+          <AdminField error={errors.showInNavigation?.message} label="Desplegable de productos">
+            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 font-medium text-brand-ink">
+              <input type="checkbox" {...register('showInNavigation')} />
+              Mostrar en el desplegable de productos
             </label>
           </AdminField>
 
