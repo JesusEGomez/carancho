@@ -16,7 +16,7 @@
     "seed": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/seed.ts",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
-    "test": "yarn test:int && yarn test:e2e",
+    "test": "pnpm run test:int && pnpm run test:e2e",
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts",
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts"
   },
@@ -61,7 +61,7 @@
   },
   "engines": {
     "node": "^18.20.2 || >=20.9.0",
-    "yarn": ">=1.22.19 <2"
+    "pnpm": ">=9"
   },
-  "packageManager": "yarn@1.22.22"
+  "packageManager": "pnpm@10.20.0"
 }

@@ -11,6 +11,7 @@ import { useAdminStoreContact, useUpsertStoreContact } from '@/hooks/admin/useAd
 const storeContactSchema = z.object({
   address: z.string().optional(),
   email: z.union([z.literal(''), z.string().trim().email('Ingresá un email válido')]).optional(),
+  instagramUrl: z.union([z.literal(''), z.string().trim().url('Ingresá una URL válida')]).optional(),
   phone: z.string().optional(),
 })
 
@@ -19,6 +20,7 @@ type StoreContactFormValues = z.infer<typeof storeContactSchema>
 const fallbackValues: StoreContactFormValues = {
   address: '',
   email: '',
+  instagramUrl: '',
   phone: '',
 }
 
@@ -43,6 +45,7 @@ export function StoreContactForm() {
     reset({
       address: storeContactQuery.data?.address ?? fallbackValues.address,
       email: storeContactQuery.data?.email ?? fallbackValues.email,
+      instagramUrl: storeContactQuery.data?.instagramUrl ?? fallbackValues.instagramUrl,
       phone: storeContactQuery.data?.phone ?? fallbackValues.phone,
     })
   }, [reset, storeContactQuery.data, storeContactQuery.isLoading])
@@ -58,7 +61,7 @@ export function StoreContactForm() {
       <div className="mb-8">
         <p className="text-xs font-bold uppercase tracking-[0.3em] text-brand-orange">Storefront</p>
         <h1 className="mt-2 text-3xl font-black text-brand-ink">Información de contacto</h1>
-        <p className="mt-2 text-sm text-slate-500">Estos datos alimentan el bloque de contacto del footer de la tienda.</p>
+        <p className="mt-2 text-sm text-slate-500">Estos datos alimentan el bloque de contacto del footer y los botones sociales de la tienda.</p>
       </div>
 
       <form
@@ -70,6 +73,7 @@ export function StoreContactForm() {
               payload: {
                 address: values.address?.trim() || null,
                 email: values.email?.trim() || null,
+                instagramUrl: values.instagramUrl?.trim() || null,
                 phone: values.phone?.trim() || null,
               },
             })
@@ -77,6 +81,7 @@ export function StoreContactForm() {
               reset({
                 address: savedContact.address ?? fallbackValues.address,
                 email: savedContact.email ?? fallbackValues.email,
+                instagramUrl: savedContact.instagramUrl ?? fallbackValues.instagramUrl,
                 phone: savedContact.phone ?? fallbackValues.phone,
               })
             })
@@ -95,6 +100,10 @@ export function StoreContactForm() {
             <AdminInput {...register('email')} type="email" />
           </AdminField>
         </div>
+
+        <AdminField error={errors.instagramUrl?.message} label="Instagram URL">
+          <AdminInput {...register('instagramUrl')} placeholder="https://instagram.com/tu_cuenta" />
+        </AdminField>
 
         {error ? <AdminAlert>{error}</AdminAlert> : null}
 

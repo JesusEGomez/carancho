@@ -56,5 +56,9 @@ export const StoreContacts: CollectionConfig = {
       name: 'email',
       type: 'email',
     },
+    {
+      name: 'instagramUrl',
+      type: 'text',
+    },
   ],
 }

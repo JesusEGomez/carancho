@@ -235,6 +235,7 @@ export interface StoreContact {
   address?: string | null;
   phone?: string | null;
   email?: string | null;
+  instagramUrl?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -467,6 +468,7 @@ export interface StoreContactsSelect<T extends boolean = true> {
   address?: T;
   phone?: T;
   email?: T;
+  instagramUrl?: T;
   updatedAt?: T;
   createdAt?: T;
 }

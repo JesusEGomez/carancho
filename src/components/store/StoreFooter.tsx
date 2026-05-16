@@ -1,11 +1,9 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import { useStoreContact } from '@/hooks/store/useStoreContact'
-import { useNavigationCategories } from '@/hooks/store/useStoreNavigation'
 
 function MapPinIcon() {
   return (
@@ -65,8 +63,6 @@ type ContactItem = {
 }
 
 export function StoreFooter() {
-  const navigationCategoriesQuery = useNavigationCategories()
-  const navigationCategories = navigationCategoriesQuery.data?.docs ?? []
   const storeContactQuery = useStoreContact()
   const storeContact = storeContactQuery.data
   const address = storeContact?.address?.trim() ?? ''
@@ -122,11 +118,7 @@ export function StoreFooter() {
   return (
     <footer className="mt-16 bg-brand-panel text-white">
       <div className="container-shell py-12">
-        <div
-          className={`grid grid-cols-1 gap-8 sm:grid-cols-2 ${
-            navigationCategories.length ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
-          }`}
-        >
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16">
           <div>
             <div className="mb-4 flex items-center gap-2">
               <Image
@@ -144,60 +136,44 @@ export function StoreFooter() {
             </p>
           </div>
 
-          {navigationCategories.length ? (
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:justify-self-end lg:gap-10">
             <div>
-              <h4 className="mb-4 text-sm font-bold uppercase tracking-wider">Categorías</h4>
+              <h4 className="mb-4 text-sm font-bold uppercase tracking-wider">Ayuda</h4>
               <ul className="space-y-2 text-sm opacity-70">
-                {navigationCategories.map((category) => (
-                  <li key={category.id}>
-                    <Link
-                      className="transition-opacity hover:opacity-100"
-                      href={`/productos?categoria=${category.slug}`}
-                    >
-                      {category.name}
-                    </Link>
+                <li>
+                  <a className="hover:opacity-100" href="#">
+                    Seguimiento de Pedido
+                  </a>
+                </li>
+                <li>
+                  <a className="hover:opacity-100" href="#">
+                    Política de Devolución
+                  </a>
+                </li>
+                <li>
+                  <a className="hover:opacity-100" href="#">
+                    Envíos y Entregas
+                  </a>
+                </li>
+                <li>
+                  <a className="hover:opacity-100" href="#">
+                    Preguntas Frecuentes
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div id="contacto">
+              <h4 className="mb-4 text-sm font-bold uppercase tracking-wider">Contacto</h4>
+              <ul className="space-y-3 text-sm opacity-70">
+                {contactItems.map((item) => (
+                  <li className="flex items-start gap-2" key={item.key}>
+                    {item.icon}
+                    <span>{item.value}</span>
                   </li>
                 ))}
               </ul>
             </div>
-          ) : null}
-
-          <div>
-            <h4 className="mb-4 text-sm font-bold uppercase tracking-wider">Ayuda</h4>
-            <ul className="space-y-2 text-sm opacity-70">
-              <li>
-                <a className="hover:opacity-100" href="#">
-                  Seguimiento de Pedido
-                </a>
-              </li>
-              <li>
-                <a className="hover:opacity-100" href="#">
-                  Política de Devolución
-                </a>
-              </li>
-              <li>
-                <a className="hover:opacity-100" href="#">
-                  Envíos y Entregas
-                </a>
-              </li>
-              <li>
-                <a className="hover:opacity-100" href="#">
-                  Preguntas Frecuentes
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div id="contacto">
-            <h4 className="mb-4 text-sm font-bold uppercase tracking-wider">Contacto</h4>
-            <ul className="space-y-3 text-sm opacity-70">
-              {contactItems.map((item) => (
-                <li className="flex items-start gap-2" key={item.key}>
-                  {item.icon}
-                  <span>{item.value}</span>
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
 

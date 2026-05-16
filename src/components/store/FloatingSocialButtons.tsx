@@ -24,8 +24,9 @@ function InstagramIcon() {
 export function FloatingSocialButtons() {
   const storeContactQuery = useStoreContact()
   const phone = storeContactQuery.data?.phone?.trim() ?? ''
+  const instagramUrl = storeContactQuery.data?.instagramUrl?.trim() ?? ''
   const whatsappHref = phone ? `https://wa.me/${normalizeWhatsAppPhone(phone)}` : null
-  const instagramHref = 'https://instagram.com/caranchooutdoors'
+  const instagramHref = instagramUrl || null
 
   return (
     <div className="fixed bottom-5 right-5 z-40 flex flex-col gap-3 sm:bottom-6 sm:right-6">
@@ -41,15 +42,17 @@ export function FloatingSocialButtons() {
         </Link>
       ) : null}
 
-      <Link
-        aria-label="Abrir Instagram"
-        className="flex h-13 w-13 items-center justify-center rounded-full bg-[linear-gradient(135deg,#833AB4_0%,#E1306C_52%,#FCAF45_100%)] text-white shadow-[0_18px_34px_rgba(225,48,108,0.3)] transition-transform duration-200 hover:-translate-y-0.5"
-        href={instagramHref}
-        rel="noreferrer"
-        target="_blank"
-      >
-        <InstagramIcon />
-      </Link>
+      {instagramHref ? (
+        <Link
+          aria-label="Abrir Instagram"
+          className="flex h-13 w-13 items-center justify-center rounded-full bg-[linear-gradient(135deg,#833AB4_0%,#E1306C_52%,#FCAF45_100%)] text-white shadow-[0_18px_34px_rgba(225,48,108,0.3)] transition-transform duration-200 hover:-translate-y-0.5"
+          href={instagramHref}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <InstagramIcon />
+        </Link>
+      ) : null}
     </div>
   )
 }

@@ -54,6 +54,7 @@ export type StoreContactRecord = {
   address?: string | null
   phone?: string | null
   email?: string | null
+  instagramUrl?: string | null
   updatedAt?: string
   createdAt?: string
 }

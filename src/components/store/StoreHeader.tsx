@@ -12,10 +12,10 @@ function StoreHeaderFallback({ showSearch = true }: { showSearch?: boolean }) {
           <Link className="flex shrink-0 items-center gap-3" href="/">
             <Image
               alt="Carancho Outdoors"
-              className=" rounded-full border-2 border-white bg-white shadow-[0_8px_20px_rgba(28,28,28,0.12)] sm:h-16 sm:w-16"
-              height={90}
+              className="h-[60px] w-[60px] rounded-full border-2 border-white bg-white shadow-[0_8px_20px_rgba(28,28,28,0.12)] sm:h-[72px] sm:w-[72px]"
+              height={100}
               src="/images/brand/carancho-logo.svg"
-              width={90}
+              width={100}
             />
             <span className="text-[1.45rem] font-extrabold tracking-tight text-brand-ink sm:text-[1.6rem]">
               CARANCHO OUTDOORS

@@ -3,13 +3,12 @@ import { notFound } from 'next/navigation'
 
 import { StoreFooter } from '@/components/store/StoreFooter'
 import { StoreHeader } from '@/components/store/StoreHeader'
-import { StoreMedia } from '@/components/store/StoreMedia'
+import { ProductImageGallery } from '@/components/store/ProductImageGallery'
 import { ProductPurchasePanel } from '@/components/store/ProductPurchasePanel'
-import { ProductCard } from '@/components/store/ProductCard'
+import { RelatedProductsCarousel } from '@/components/store/RelatedProductsCarousel'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { getProductStockPresentation } from '@/lib/product-stock'
 import { getProductBySlug } from '@/lib/store'
-import type { Media } from '@/payload-types'
 
 type Props = {
   params: Promise<{
@@ -31,7 +30,12 @@ export default async function ProductDetailPage({ params }: Props) {
     product.specifications?.filter((specification) => specification.label.trim().length > 0 && specification.value.trim().length > 0) ?? []
   const showFeatures = (product.showFeatures ?? features.length > 0) && features.length > 0
   const showSpecifications = (product.showSpecifications ?? specifications.length > 0) && specifications.length > 0
-  const gallery = (product.gallery?.length ? product.gallery : [product.featuredImage]) as Media[]
+  const gallery = [product.featuredImage, ...(product.gallery ?? [])].filter(
+    (item, index, items): item is Extract<typeof item, object> =>
+      typeof item === 'object' &&
+      item !== null &&
+      items.findIndex((candidate) => typeof candidate === 'object' && candidate !== null && candidate.id === item.id) === index,
+  )
   const stockPresentation = getProductStockPresentation(product.stock)
 
   return (
@@ -52,32 +56,11 @@ export default async function ProductDetailPage({ params }: Props) {
         </nav>
 
         <section className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <div>
-            <div className="overflow-hidden rounded-[24px] bg-slate-100 shadow-[0_18px_40px_rgba(15,23,42,0.10)]">
-              <StoreMedia
-                alt={product.featuredImage?.alt ?? product.name}
-                className="aspect-[1.22] w-full object-cover"
-                fallbackLabel={product.name}
-                src={product.featuredImage?.url}
-              />
-            </div>
-
-            <div className="mt-4 grid grid-cols-4 gap-4">
-              {gallery.slice(0, 4).map((image, index) => (
-                <div
-                  key={image.id}
-                  className={`overflow-hidden rounded-[18px] border-2 ${index === 0 ? 'border-brand-orange' : 'border-transparent'} bg-slate-100`}
-                >
-                  <StoreMedia
-                    alt={image.alt}
-                    className="aspect-square w-full object-cover"
-                    fallbackLabel={product.category.name}
-                    src={image.url}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
+          <ProductImageGallery
+            categoryName={product.category.name}
+            images={gallery}
+            productName={product.name}
+          />
 
           <div className="pt-2">
             <span className={`pill-badge ${stockPresentation.badgeClassName}`}>{stockPresentation.label}</span>
@@ -157,22 +140,7 @@ export default async function ProductDetailPage({ params }: Props) {
           ) : null}
         </section>
 
-        {relatedProducts.length ? (
-          <section className="mt-20">
-            <div className="mb-8 flex items-center justify-between gap-4">
-              <h2 className="text-3xl font-black text-brand-ink">Productos Relacionados</h2>
-              <div className="flex gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-400">‹</span>
-                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-400">›</span>
-              </div>
-            </div>
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {relatedProducts.map((relatedProduct) => (
-                <ProductCard key={relatedProduct.id} product={relatedProduct} />
-              ))}
-            </div>
-          </section>
-        ) : null}
+        <RelatedProductsCarousel products={relatedProducts} />
       </div>
 
       <StoreFooter />

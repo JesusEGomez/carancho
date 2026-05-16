@@ -5,9 +5,12 @@ const baseEnv = {
   NODE_OPTIONS: process.env.NODE_OPTIONS ?? '--no-deprecation --max-old-space-size=8000',
 }
 
-function runYarnScript(script) {
-  const result = spawnSync('yarn', [script], {
+const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+
+function runPnpmScript(script) {
+  const result = spawnSync(pnpmCommand, ['run', script], {
     env: baseEnv,
+    shell: process.platform === 'win32',
     stdio: 'inherit',
   })
 
@@ -24,7 +27,7 @@ const isPreviewDeployment = process.env.VERCEL_ENV === 'preview'
 
 if (process.env.DATABASE_URL && !isPreviewDeployment) {
   console.log('Running Payload migrations before build...')
-  runYarnScript('migrate')
+  runPnpmScript('migrate')
 } else if (process.env.DATABASE_URL && isPreviewDeployment) {
   console.log('Skipping Payload migrations during Vercel preview build.')
 } else {
@@ -32,4 +35,4 @@ if (process.env.DATABASE_URL && !isPreviewDeployment) {
 }
 
 console.log('Running Next.js build...')
-runYarnScript('build:next')
+runPnpmScript('build:next')
