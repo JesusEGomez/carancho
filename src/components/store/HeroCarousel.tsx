@@ -19,6 +19,11 @@ const HERO_SLIDES = [
     objectPosition: 'object-[78%_center] sm:object-[70%_center]',
     src: '/images/heroes/carancho-home-hero-6.png',
   },
+  {
+    alt: 'Hero carancho outdoors',
+    objectPosition: 'object-center',
+    src: '/images/heroes/carancho-home-hero-7.jpeg',
+  },
 ] as const
 
 const HERO_BAND_ITEMS = ['Pesca deportiva', 'Camping y aventura', 'Hogar y utilitarios'] as const
@@ -74,8 +79,8 @@ export function HeroCarousel() {
             la <span className="text-brand-orange">Caza</span> y la Aventura
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-white/88 drop-shadow-[0_6px_18px_rgba(15,23,42,0.35)] sm:text-lg">
-            Equipamiento de alta calidad para pescadores apasionados y amantes de la
-            vida al aire libre.
+            Equipamiento de alta calidad para pescadores apasionados y amantes de la vida al aire
+            libre.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">

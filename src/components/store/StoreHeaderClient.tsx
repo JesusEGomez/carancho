@@ -176,12 +176,12 @@ export function StoreHeaderClient({ showSearch = true }: { showSearch?: boolean 
           <Link className="flex shrink-0 items-center gap-3" href="/">
             <Image
               alt="Carancho Outdoors"
-              className="h-[60px] w-[60px] rounded-full border-2 border-white shadow-[0_8px_20px_rgba(28,28,28,0.12)] sm:h-[72px] sm:w-[72px]"
+              className="h-[48px] w-[48px] rounded-full border-2 border-white shadow-[0_8px_20px_rgba(28,28,28,0.12)] sm:h-[72px] sm:w-[72px]"
               height={100}
               src="/images/brand/carancho-logo.svg"
               width={100}
             />
-            <span className="text-[1.45rem] font-extrabold tracking-tight text-brand-ink sm:text-[1.6rem]">
+            <span className="text-[0.8rem] font-extrabold tracking-tight text-brand-ink sm:text-[1.45rem] md:text-[1.6rem]">
               CARANCHO OUTDOORS
             </span>
           </Link>

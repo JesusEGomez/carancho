@@ -15,7 +15,7 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
 
   return (
     <html data-scroll-behavior="smooth" lang="es">
-      <body className="min-h-screen bg-brand-cream">
+      <body className="min-h-screen overflow-x-hidden bg-brand-cream">
         <QueryProvider>
           <ToastProvider>
             <CartProvider>
