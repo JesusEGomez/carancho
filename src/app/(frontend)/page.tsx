@@ -55,7 +55,7 @@ export default async function HomePage() {
           </h2>
           <Image
             alt="Marcas: Alpine Skate, Bewolk, Brogas, Colony, Contigo, Discovery, DMF, Doite, HEAD, Kumoc, Kunnan, Libertad, Makalu, Marine, Mustad, Okuma, Omoto, Payo, Rocker, Shimano, Sox, Spinit, Sportsman, Trento, Waterdog"
-            className="mx-auto h-auto w-full max-w-4xl invert opacity-40"
+            className="mx-auto h-auto w-full max-w-4xl invert opacity-45 mix-blend-multiply"
             height={546}
             sizes="(max-width: 768px) 100vw, 896px"
             src="/images/brands/brands-logos.png"

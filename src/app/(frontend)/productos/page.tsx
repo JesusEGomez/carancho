@@ -207,11 +207,11 @@ export default async function ProductsPage({ searchParams }: Props) {
               ) : null}
             </div>
 
-            <div className="mt-6 grid gap-5 sm:grid-cols-2 2xl:grid-cols-3 xl:gap-6">
+            <div className="mt-6 grid grid-cols-2 gap-5 lg:grid-cols-3 xl:gap-6">
               {products.length ? (
                 products.map((product) => <ProductCard key={product.id} product={product} />)
               ) : (
-                <div className="rounded-[28px] border border-slate-200 bg-white p-8 md:col-span-2 xl:col-span-3">
+                <div className="col-span-2 rounded-[28px] border border-slate-200 bg-white p-8 lg:col-span-3">
                   <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">
                     Sin resultados
                   </p>

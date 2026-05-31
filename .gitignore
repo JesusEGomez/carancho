@@ -62,3 +62,5 @@ skills-lock.json
 /design/
 /review-*.png
 /carancho-*.png
+# Local Pi runtime state
+.atl/
