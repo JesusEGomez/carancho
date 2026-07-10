@@ -9,16 +9,16 @@ function StoreHeaderFallback({ showSearch = true }: { showSearch?: boolean }) {
     <header className="sticky top-0 z-50 border-b-4 border-brand-orange bg-[#f7f4ef]/95 shadow-sm backdrop-blur-sm">
       <div className="container-shell py-3">
         <div className="flex items-center justify-between gap-4">
-          <Link className="flex shrink-0 items-center gap-3" href="/">
+          <Link className="flex shrink-0 flex-col items-center gap-1" href="/">
             <Image
               alt="Carancho Outdoors"
-              className="h-[48px] w-[48px] rounded-full border-2 border-white bg-white shadow-[0_8px_20px_rgba(28,28,28,0.12)] sm:h-[72px] sm:w-[72px]"
+              className="h-[48px] w-[48px] rounded-full border-2 border-white bg-white shadow-[0_8px_20px_rgba(28,28,28,0.12)] sm:h-[64px] sm:w-[64px]"
               height={100}
               src="/images/brand/carancho-logo.svg"
               width={100}
             />
-            <span className="text-[0.8rem] font-extrabold tracking-tight text-brand-ink sm:text-[1.45rem] md:text-[1.6rem]">
-              CARANCHO OUTDOORS
+            <span className="text-[0.7rem] font-extrabold uppercase tracking-tight text-brand-ink sm:text-[0.8rem]">
+              Carancho Outdoors
             </span>
           </Link>
 

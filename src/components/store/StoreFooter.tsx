@@ -120,15 +120,15 @@ export function StoreFooter() {
       <div className="container-shell py-12">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16">
           <div>
-            <div className="mb-4 flex items-center gap-2">
+            <div className="mb-4 flex flex-col items-start gap-2">
               <Image
                 alt="Carancho Outdoors"
-                className="rounded-full   bg-white   shadow-[0_10px_24px_rgba(0,0,0,0.22)]"
+                className="h-20 w-20 rounded-full bg-white shadow-[0_10px_24px_rgba(0,0,0,0.22)]"
                 height={100}
                 src="/images/brand/carancho-logo.svg"
                 width={100}
               />
-              <span className="text-xl font-extrabold">CARANCHO OUTDOORS</span>
+              <span className="text-base font-extrabold uppercase tracking-tight">Carancho Outdoors</span>
             </div>
             <p className="text-sm leading-relaxed opacity-70">
               Pasión por la pesca deportiva y dedicación a tu hogar. Ofrecemos los mejores productos

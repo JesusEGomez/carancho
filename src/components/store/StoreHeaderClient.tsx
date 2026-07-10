@@ -173,16 +173,16 @@ export function StoreHeaderClient({ showSearch = true }: { showSearch?: boolean 
     <header className="sticky top-0 z-50 border-b-4 border-brand-orange bg-[#f7f4ef]/95 shadow-sm backdrop-blur-sm">
       <div className="container-shell py-3">
         <div className="flex items-center justify-between gap-4">
-          <Link className="flex shrink-0 items-center gap-3" href="/">
+          <Link className="flex shrink-0 flex-col items-center gap-1" href="/">
             <Image
               alt="Carancho Outdoors"
-              className="h-[48px] w-[48px] rounded-full border-2 border-white shadow-[0_8px_20px_rgba(28,28,28,0.12)] sm:h-[72px] sm:w-[72px]"
+              className="h-[48px] w-[48px] rounded-full border-2 border-white shadow-[0_8px_20px_rgba(28,28,28,0.12)] sm:h-[64px] sm:w-[64px]"
               height={100}
               src="/images/brand/carancho-logo.svg"
               width={100}
             />
-            <span className="text-[0.8rem] font-extrabold tracking-tight text-brand-ink sm:text-[1.45rem] md:text-[1.6rem]">
-              CARANCHO OUTDOORS
+            <span className="text-[0.7rem] font-extrabold uppercase tracking-tight text-brand-ink sm:text-[0.8rem]">
+              Carancho Outdoors
             </span>
           </Link>
 
@@ -215,7 +215,7 @@ export function StoreHeaderClient({ showSearch = true }: { showSearch?: boolean 
                 </Link>
 
                 <div
-                  className={`absolute left-1/2 top-[calc(100%+16px)] z-50 w-screen max-w-[100vw] -translate-x-1/2 px-6 transition-all duration-220 ease-out ${
+                  className={`fixed inset-x-0 top-full z-50 mx-auto mt-4 w-fit min-w-[min(90vw,1024px)] max-w-[min(96vw,1280px)] px-6 transition-all duration-220 ease-out ${
                     catalogOpen
                       ? 'pointer-events-auto translate-y-0 opacity-100'
                       : 'pointer-events-none translate-y-2 opacity-0'
