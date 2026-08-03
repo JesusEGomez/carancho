@@ -1,5 +1,3 @@
-import 'server-only'
-
 import type { Payload } from 'payload'
 
 import { createCallMeBotNotifier } from '@/lib/notifications/callmebot'
