@@ -1,6 +1,6 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
-import { vercelBlobStorage } from '@payloadcms/storage-vercel-blob'
+import { s3Storage } from '@payloadcms/storage-s3'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -15,9 +15,14 @@ import { Orders } from './collections/Orders'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
-const hasValidBlobToken = process.env.BLOB_READ_WRITE_TOKEN?.startsWith('vercel_blob_rw_')
-const isBlobStorageDisabled = process.env.PAYLOAD_DISABLE_BLOB_STORAGE === 'true'
-const shouldEnableBlobStorage = hasValidBlobToken && !isBlobStorageDisabled
+const hasR2Credentials = Boolean(
+  process.env.R2_BUCKET &&
+    process.env.R2_ACCESS_KEY_ID &&
+    process.env.R2_SECRET_ACCESS_KEY &&
+    process.env.R2_ENDPOINT,
+)
+const isRemoteStorageDisabled = process.env.PAYLOAD_DISABLE_BLOB_STORAGE === 'true'
+const shouldEnableR2 = hasR2Credentials && !isRemoteStorageDisabled
 
 export default buildConfig({
   admin: {
@@ -42,15 +47,27 @@ export default buildConfig({
   }),
   sharp,
   plugins: [
-    ...(shouldEnableBlobStorage
+    ...(shouldEnableR2
       ? [
-          vercelBlobStorage({
+          s3Storage({
             enabled: true,
             collections: {
-              media: true,
+              media: {
+                disablePayloadAccessControl: true,
+                generateFileURL: ({ filename, prefix }) =>
+                  `${process.env.R2_PUBLIC_URL}/${prefix ? `${prefix}/${filename}` : filename}`,
+              },
             },
-            clientUploads: true,
-            token: process.env.BLOB_READ_WRITE_TOKEN,
+            bucket: process.env.R2_BUCKET || '',
+            config: {
+              credentials: {
+                accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
+                secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
+              },
+              region: 'auto',
+              endpoint: process.env.R2_ENDPOINT,
+              forcePathStyle: true,
+            },
           }),
         ]
       : []),
