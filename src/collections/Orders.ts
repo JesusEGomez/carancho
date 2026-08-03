@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAdmin } from '@/access/isAdmin'
+import { notifyAdminAfterOrderChange } from '@/hooks/orderNotificationHooks'
 import { syncOrderStockAfterChange, validateOrderStockBeforeChange } from '@/hooks/orderStockHooks'
 
 export const Orders: CollectionConfig = {
@@ -16,7 +17,7 @@ export const Orders: CollectionConfig = {
     update: isAdmin,
   },
   hooks: {
-    afterChange: [syncOrderStockAfterChange],
+    afterChange: [syncOrderStockAfterChange, notifyAdminAfterOrderChange],
     beforeChange: [validateOrderStockBeforeChange],
   },
   fields: [
