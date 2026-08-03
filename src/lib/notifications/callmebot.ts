@@ -1,5 +1,3 @@
-import 'server-only'
-
 import type { AdminAlert, AdminNotifier, AlertResult } from '@/lib/notifications/types'
 
 const CALLMEBOT_ENDPOINT = 'https://api.callmebot.com/whatsapp.php'
