@@ -104,6 +104,25 @@ async function applyPaymentStateToOrder(args: {
   const payload = await getPayloadClient()
   const mapped = mapMercadoPagoPayment(args.payment)
 
+  // Notifications can arrive out of order: never downgrade a paid order
+  // unless the payment moved to a genuine post-approval state.
+  const orderIsPaid = args.order.status === 'confirmed' || args.order.status === 'fulfillment_blocked'
+  const isPostApprovalUpdate =
+    mapped.orderStatus === 'confirmed' ||
+    mapped.paymentStatus === 'refunded' ||
+    mapped.paymentStatus === 'charged_back'
+
+  if (orderIsPaid && !isPostApprovalUpdate) {
+    console.warn('Ignoring Mercado Pago payment state that would downgrade a paid order', {
+      currentStatus: args.order.status,
+      incomingStatus: mapped.orderStatus,
+      orderId: args.order.id,
+      paymentId: mapped.providerPaymentId,
+      rawStatus: mapped.providerRawStatus,
+    })
+    return args.order
+  }
+
   try {
     return await payload.update({
       collection: 'orders',
@@ -290,13 +309,12 @@ export async function handleMercadoPagoWebhook(args: {
       signatureHeader,
     })
 
+    // Never log the expected HMAC: it is the valid signature for this request.
     console.warn('Rejected Mercado Pago webhook with invalid signature', {
       dataId,
-      expectedSignature: debug.expectedSignature,
       manifest: debug.manifest,
       parsedSignature: debug.parsedSignature,
       requestId,
-      signatureHeader,
       topic,
     })
     return {

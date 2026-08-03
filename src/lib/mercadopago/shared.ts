@@ -66,15 +66,35 @@ export function buildMercadoPagoWebhookManifest(dataId: string, requestId: strin
   return `id:${dataId.toLowerCase()};request-id:${requestId};ts:${timestamp};`
 }
 
+const DEFAULT_SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000
+
+function isSignatureTimestampFresh(ts: string, toleranceMs: number) {
+  const parsed = Number(ts)
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return false
+  }
+
+  // Mercado Pago sends ts in seconds or milliseconds depending on the notification source
+  const timestampMs = parsed < 1e12 ? parsed * 1000 : parsed
+
+  return Math.abs(Date.now() - timestampMs) <= toleranceMs
+}
+
 export function verifyMercadoPagoWebhookSignature(args: {
   dataId: string
   requestId: string
   secret: string
   signatureHeader: string | null
+  toleranceMs?: number
 }) {
   const parts = parseMercadoPagoSignatureHeader(args.signatureHeader)
 
   if (!parts) {
+    return false
+  }
+
+  if (!isSignatureTimestampFresh(parts.ts, args.toleranceMs ?? DEFAULT_SIGNATURE_TOLERANCE_MS)) {
     return false
   }
 
@@ -208,12 +228,14 @@ export function mapMercadoPagoPayment(payment: PaymentResponse): MercadoPagoReso
 
 export function getLatestMerchantOrderPayment(merchantOrder: MerchantOrderResponse) {
   const payments = merchantOrder.payments?.filter((payment) => typeof payment.id === 'number') ?? []
-
-  return payments.sort((left, right) => {
+  const sorted = payments.sort((left, right) => {
     const leftDate = new Date(left.last_modified ?? left.date_created ?? 0).getTime()
     const rightDate = new Date(right.last_modified ?? right.date_created ?? 0).getTime()
     return rightDate - leftDate
-  })[0]
+  })
+
+  // An approved payment settles the order even when a later attempt was rejected
+  return sorted.find((payment) => payment.status === 'approved') ?? sorted[0]
 }
 
 export function getNotificationDataId(requestUrl: URL) {
