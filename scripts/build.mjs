@@ -23,15 +23,16 @@ function runPnpmScript(script) {
   }
 }
 
+const isVercel = process.env.VERCEL === '1'
 const isPreviewDeployment = process.env.VERCEL_ENV === 'preview'
 
-if (process.env.DATABASE_URL && !isPreviewDeployment) {
+if (isVercel && process.env.DATABASE_URL && !isPreviewDeployment) {
   console.log('Running Payload migrations before build...')
   runPnpmScript('migrate')
-} else if (process.env.DATABASE_URL && isPreviewDeployment) {
+} else if (isVercel && process.env.DATABASE_URL && isPreviewDeployment) {
   console.log('Skipping Payload migrations during Vercel preview build.')
 } else {
-  console.log('Skipping Payload migrations because DATABASE_URL is not set.')
+  console.log('Skipping Payload migrations at build time — the start command runs them once the container has network access to the database.')
 }
 
 console.log('Running Next.js build...')
