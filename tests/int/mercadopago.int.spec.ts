@@ -3,9 +3,12 @@ import crypto from 'crypto'
 import { describe, expect, it } from 'vitest'
 import type { PaymentResponse } from 'mercadopago/dist/clients/payment/commonTypes'
 
+import type { MerchantOrderResponse } from 'mercadopago/dist/clients/merchantOrder/commonTypes'
+
 import {
   buildMercadoPagoWebhookManifest,
   buildPreferenceRequest,
+  getLatestMerchantOrderPayment,
   mapMercadoPagoPayment,
   verifyMercadoPagoWebhookSignature,
 } from '@/lib/mercadopago/shared'
@@ -86,7 +89,8 @@ describe('Mercado Pago helpers', () => {
 
   it('validates webhook signatures using the official manifest format', () => {
     const secret = 'super-secret'
-    const manifest = buildMercadoPagoWebhookManifest('123456', 'req-abc', '1742505638683')
+    const ts = String(Date.now())
+    const manifest = buildMercadoPagoWebhookManifest('123456', 'req-abc', ts)
     const v1 = crypto.createHmac('sha256', secret).update(manifest).digest('hex')
 
     expect(
@@ -94,8 +98,82 @@ describe('Mercado Pago helpers', () => {
         dataId: '123456',
         requestId: 'req-abc',
         secret,
-        signatureHeader: `ts=1742505638683,v1=${v1}`,
+        signatureHeader: `ts=${ts},v1=${v1}`,
       }),
     ).toBe(true)
+  })
+
+  it('accepts signature timestamps expressed in seconds', () => {
+    const secret = 'super-secret'
+    const ts = String(Math.floor(Date.now() / 1000))
+    const manifest = buildMercadoPagoWebhookManifest('123456', 'req-abc', ts)
+    const v1 = crypto.createHmac('sha256', secret).update(manifest).digest('hex')
+
+    expect(
+      verifyMercadoPagoWebhookSignature({
+        dataId: '123456',
+        requestId: 'req-abc',
+        secret,
+        signatureHeader: `ts=${ts},v1=${v1}`,
+      }),
+    ).toBe(true)
+  })
+
+  it('rejects correctly signed webhooks with stale timestamps to prevent replays', () => {
+    const secret = 'super-secret'
+    const staleTs = String(Date.now() - 10 * 60 * 1000)
+    const manifest = buildMercadoPagoWebhookManifest('123456', 'req-abc', staleTs)
+    const v1 = crypto.createHmac('sha256', secret).update(manifest).digest('hex')
+
+    expect(
+      verifyMercadoPagoWebhookSignature({
+        dataId: '123456',
+        requestId: 'req-abc',
+        secret,
+        signatureHeader: `ts=${staleTs},v1=${v1}`,
+      }),
+    ).toBe(false)
+  })
+
+  it('prefers the approved payment over a newer rejected attempt in merchant orders', () => {
+    const merchantOrder = {
+      payments: [
+        {
+          date_created: '2026-08-01T10:00:00.000-04:00',
+          id: 100,
+          last_modified: '2026-08-01T10:00:00.000-04:00',
+          status: 'approved',
+        },
+        {
+          date_created: '2026-08-01T10:05:00.000-04:00',
+          id: 101,
+          last_modified: '2026-08-01T10:05:00.000-04:00',
+          status: 'rejected',
+        },
+      ],
+    } as MerchantOrderResponse
+
+    expect(getLatestMerchantOrderPayment(merchantOrder)?.id).toBe(100)
+  })
+
+  it('falls back to the latest payment when none is approved', () => {
+    const merchantOrder = {
+      payments: [
+        {
+          date_created: '2026-08-01T10:00:00.000-04:00',
+          id: 100,
+          last_modified: '2026-08-01T10:00:00.000-04:00',
+          status: 'rejected',
+        },
+        {
+          date_created: '2026-08-01T10:05:00.000-04:00',
+          id: 101,
+          last_modified: '2026-08-01T10:05:00.000-04:00',
+          status: 'pending',
+        },
+      ],
+    } as MerchantOrderResponse
+
+    expect(getLatestMerchantOrderPayment(merchantOrder)?.id).toBe(101)
   })
 })
