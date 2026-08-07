@@ -88,6 +88,9 @@ Carancho is a Payload CMS + Next.js commerce experience for fishing, camping, an
 - The home hero image is currently a local frontend asset, not a managed Payload media entry yet.
 - The custom admin dashboard is visually aligned to the design, but the best validation still requires a real admin user and seeded catalog data.
 - The dashboard shell depends on client auth hydration; if auth is missing or invalid it redirects to `/admin/login`.
+- Intermittent React hydration mismatch on the header cart badge (`StoreHeaderClient.tsx`, the `{itemCount}` span). Only reproduces when the cart is not empty; clearing `localStorage['carancho-store-cart']` makes it disappear. `CartProvider` correctly starts at `[]` and loads from `localStorage` in an effect, but `StoreHeader` wraps the client component in `<Suspense>` (required by its `useSearchParams` call), so that boundary hydrates late in the stream. When the cart effect wins the race, the boundary hydrates with `itemCount` already updated while the server HTML still says `0`. React recovers by regenerating the subtree, so it is a recoverable error with no user-visible breakage. Two fixes when it becomes worth addressing: `suppressHydrationWarning` on that span (targeted, one line), or moving `CartProvider` to `useSyncExternalStore` with a `getServerSnapshot` returning the empty cart (removes the race for every cart consumer).
+- Category preview images 404 against the R2 public bucket (`pub-58905f543d5346b0b3de43acc8160a91.r2.dev`), so the featured category cards render broken images instead of falling back to placeholders.
+- Static assets replaced in place under `public/` keep serving stale bytes through the Next image optimizer, which caches by URL and not by content. Rename the file when its content changes so the URL changes with it.
 
 ## Verification Expectations
 
