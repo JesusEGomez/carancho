@@ -34,23 +34,27 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
         />
 
         {badgeLabel ? (
-          <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold ${badgeClassName}`}>
+          <span
+            className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold sm:left-3 sm:top-3 sm:px-3 sm:py-1 sm:text-xs ${badgeClassName}`}
+          >
             {badgeLabel.toUpperCase()}
           </span>
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="mb-1 line-clamp-2 text-sm leading-tight font-bold text-brand-ink transition-colors group-hover:text-brand-orange">
+      <div className="flex flex-1 flex-col p-3 sm:p-4">
+        <h3 className="mb-1 line-clamp-2 text-[13px] leading-tight font-bold text-brand-ink transition-colors group-hover:text-brand-orange sm:text-sm">
           {product.name}
         </h3>
-        <p className="mb-3 line-clamp-2 text-xs text-slate-500">{product.shortDescription}</p>
+        <p className="mb-2 line-clamp-2 text-[11px] text-slate-500 sm:mb-3 sm:text-xs">{product.shortDescription}</p>
 
         <div className="flex items-end justify-between gap-2">
           <div>
-            <span className="text-lg font-extrabold text-brand-ink">{formatCurrency(product.price)}</span>
+            <span className="text-base font-extrabold text-brand-ink sm:text-lg">{formatCurrency(product.price)}</span>
             {product.compareAtPrice ? (
-              <span className="ml-2 text-xs text-slate-400 line-through">{formatCurrency(product.compareAtPrice)}</span>
+              <span className="ml-1.5 text-[10px] text-slate-400 line-through sm:ml-2 sm:text-xs">
+                {formatCurrency(product.compareAtPrice)}
+              </span>
             ) : null}
           </div>
         </div>
