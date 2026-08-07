@@ -54,12 +54,12 @@ export default async function HomePage() {
             Marcas que nos acompañan
           </h2>
           <Image
-            alt="Marcas: Alpine Skate, Bewolk, Brogas, Colony, Contigo, Discovery, DMF, Doite, HEAD, Kumoc, Kunnan, Libertad, Makalu, Marine, Mustad, Okuma, Omoto, Payo, Rocker, Shimano, Sox, Spinit, Sportsman, Trento, Waterdog"
+            alt="Marcas: Alpine Skate, Coleman, Plano, Colony, Discovery, PARD, DMF, Outdoor Noire, Suri, Kunnan, Libertad, Umarex Airguns, Marine, Okuma, Omoto, Payo, Fox Airguns, Stanley, Spinit, Igloo, Trento, Mustad, Shimano, Contigo"
             className="mx-auto h-auto w-full max-w-4xl invert opacity-45 mix-blend-multiply"
-            height={546}
+            height={692}
             sizes="(max-width: 768px) 100vw, 896px"
-            src="/images/brands/brands-logos.png"
-            width={1600}
+            src="/images/brands/brands-logos-v2.png"
+            width={1129}
           />
         </div>
       </section>
