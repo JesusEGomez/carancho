@@ -1,36 +1,30 @@
 import type { Payload } from 'payload'
 
-import { createCallMeBotNotifier } from '@/lib/notifications/callmebot'
+import { getSmtpConfig } from '@/lib/email/smtp'
+import { createEmailNotifier } from '@/lib/notifications/email'
 import type { AdminAlert, AdminNotifier, AlertResult } from '@/lib/notifications/types'
 
 let warnedNotConfigured = false
 
-function warnNotConfiguredOnce() {
+function warnNotConfiguredOnce(reason: string) {
   if (warnedNotConfigured) {
     return
   }
 
   warnedNotConfigured = true
-  console.warn(
-    'Admin purchase alerts are not configured: missing CALLMEBOT_API_KEY env var or store contact phone. Skipping WhatsApp notifications.',
-  )
+  console.warn(`Admin purchase alerts are not configured: ${reason}. Skipping email notifications.`)
 }
 
-function createNoopNotifier(): AdminNotifier {
+function createNoopNotifier(reason: string): AdminNotifier {
   return {
     async notify(_alert: AdminAlert): Promise<AlertResult> {
-      warnNotConfiguredOnce()
+      warnNotConfiguredOnce(reason)
       return { delivered: false, reason: 'not_configured' }
     },
   }
 }
 
-function getCallMeBotApiKey(): string | null {
-  const apiKey = process.env.CALLMEBOT_API_KEY?.trim()
-  return apiKey ? apiKey : null
-}
-
-async function resolveAdminPhone(payload: Payload): Promise<string | null> {
+async function resolveAdminEmail(payload: Payload): Promise<string | null> {
   const contacts = await payload.find({
     collection: 'store-contacts',
     depth: 0,
@@ -38,22 +32,20 @@ async function resolveAdminPhone(payload: Payload): Promise<string | null> {
     overrideAccess: false,
   })
 
-  const phone = contacts.docs[0]?.phone?.trim()
-  return phone ? phone : null
+  const email = contacts.docs[0]?.email?.trim()
+  return email ? email : null
 }
 
 export async function getAdminNotifier(payload: Payload): Promise<AdminNotifier> {
-  const apiKey = getCallMeBotApiKey()
-
-  if (!apiKey) {
-    return createNoopNotifier()
+  if (!getSmtpConfig()) {
+    return createNoopNotifier('missing SMTP env vars')
   }
 
-  const phone = await resolveAdminPhone(payload)
+  const to = await resolveAdminEmail(payload)
 
-  if (!phone) {
-    return createNoopNotifier()
+  if (!to) {
+    return createNoopNotifier('missing store contact email')
   }
 
-  return createCallMeBotNotifier({ apiKey, phone })
+  return createEmailNotifier({ payload, to })
 }

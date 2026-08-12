@@ -1,4 +1,5 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
+import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { s3Storage } from '@payloadcms/storage-s3'
 import path from 'path'
@@ -12,6 +13,7 @@ import { Categories } from './collections/Categories'
 import { Products } from './collections/Products'
 import { StoreContacts } from './collections/StoreContacts'
 import { Orders } from './collections/Orders'
+import { getSmtpConfig } from './lib/email/smtp'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -23,6 +25,7 @@ const hasR2Credentials = Boolean(
 )
 const isRemoteStorageDisabled = process.env.PAYLOAD_DISABLE_BLOB_STORAGE === 'true'
 const shouldEnableR2 = hasR2Credentials && !isRemoteStorageDisabled
+const smtp = getSmtpConfig()
 
 export default buildConfig({
   admin: {
@@ -36,6 +39,25 @@ export default buildConfig({
   },
   collections: [Users, Media, Categories, Products, StoreContacts, Orders],
   editor: lexicalEditor(),
+  // Without SMTP credentials the adapter is left out entirely, so Payload keeps
+  // its default no-transport behaviour instead of failing on every send.
+  ...(smtp
+    ? {
+        email: nodemailerAdapter({
+          defaultFromAddress: smtp.fromAddress,
+          defaultFromName: smtp.fromName,
+          transportOptions: {
+            auth: {
+              pass: smtp.password,
+              user: smtp.user,
+            },
+            host: smtp.host,
+            port: smtp.port,
+            secure: smtp.secure,
+          },
+        }),
+      }
+    : {}),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
