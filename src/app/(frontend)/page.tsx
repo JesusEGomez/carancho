@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { connection } from 'next/server'
 
 import { FeaturedCategoriesCarousel } from '@/components/store/FeaturedCategoriesCarousel'
@@ -10,6 +11,16 @@ import { HeroCarousel } from '@/components/store/HeroCarousel'
 import { StoreHeader } from '@/components/store/StoreHeader'
 import { ProductCard } from '@/components/store/ProductCard'
 import { getFeaturedCategories, getFeaturedProducts } from '@/lib/store'
+import { absoluteUrl, serializeJsonLd } from '@/lib/seo'
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: '/',
+  },
+  description:
+    'Encontrá equipamiento para pesca, caza, camping y aventura en Carancho Outdoors.',
+  title: 'Pesca, caza, camping y aventura',
+}
 
 export default async function HomePage() {
   // The catalog lives in Payload, so this page has to be rendered per request. Without
@@ -19,9 +30,20 @@ export default async function HomePage() {
   await connection()
 
   const [categories, products] = await Promise.all([getFeaturedCategories(), getFeaturedProducts(4)])
+  const organizationJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    logo: absoluteUrl('/images/brand/carancho-logo-sinfondo (2).png'),
+    name: 'Carancho Outdoors',
+    url: absoluteUrl('/'),
+  }
 
   return (
     <div className="min-h-screen bg-brand-cream">
+      <script
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationJsonLd) }}
+        type="application/ld+json"
+      />
       <StoreHeader />
       <FloatingSocialButtons />
 

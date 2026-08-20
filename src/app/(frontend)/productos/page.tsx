@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 
 import { CatalogFilters } from '@/components/store/CatalogFilters'
 import { CatalogSortSelect } from '@/components/store/CatalogSortSelect'
@@ -15,6 +16,28 @@ type Props = {
     q?: string
     sort?: string
   }>
+}
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams
+  const hasFilters = Boolean(
+    params.categoria || params.maxPrice || params.page || params.q || params.sort,
+  )
+
+  return {
+    alternates: {
+      canonical: '/productos',
+    },
+    description:
+      'Explorá el catálogo de pesca, caza, camping, náutica y aventura de Carancho Outdoors.',
+    robots: hasFilters
+      ? {
+          follow: true,
+          index: false,
+        }
+      : undefined,
+    title: 'Catálogo de productos',
+  }
 }
 
 export default async function ProductsPage({ searchParams }: Props) {

@@ -177,6 +177,34 @@ export async function getFeaturedProducts(limit = 8) {
   }
 }
 
+export async function getSitemapProducts() {
+  const payload = await getPayloadSafely()
+
+  if (!payload) {
+    return previewFeaturedProducts(1000).map(({ slug, updatedAt }) => ({ slug, updatedAt }))
+  }
+
+  try {
+    const result = await payload.find({
+      collection: 'products',
+      depth: 0,
+      limit: 10000,
+      overrideAccess: false,
+      pagination: false,
+      select: {
+        slug: true,
+        updatedAt: true,
+      },
+      sort: '-updatedAt',
+    })
+
+    return result.docs.map(({ slug, updatedAt }) => ({ slug, updatedAt }))
+  } catch (error) {
+    console.error(`Failed to load products for sitemap, ${degradedNotice()}`, error)
+    return previewFeaturedProducts(1000).map(({ slug, updatedAt }) => ({ slug, updatedAt }))
+  }
+}
+
 const DEFAULT_PRICE_RANGE_MAX = 50000
 const SORT_OPTIONS = {
   newest: '-createdAt',
