@@ -63,6 +63,7 @@ type ContactItem = {
 }
 
 export function StoreFooter() {
+  const currentYear = new Date().getFullYear()
   const storeContactQuery = useStoreContact()
   const storeContact = storeContactQuery.data
   const address = storeContact?.address?.trim() ?? ''
@@ -136,33 +137,7 @@ export function StoreFooter() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:justify-self-end lg:gap-10">
-            <div>
-              <h4 className="mb-4 text-sm font-bold uppercase tracking-wider">Ayuda</h4>
-              <ul className="space-y-2 text-sm opacity-70">
-                <li>
-                  <a className="hover:opacity-100" href="#">
-                    Seguimiento de Pedido
-                  </a>
-                </li>
-                <li>
-                  <a className="hover:opacity-100" href="#">
-                    Política de Devolución
-                  </a>
-                </li>
-                <li>
-                  <a className="hover:opacity-100" href="#">
-                    Envíos y Entregas
-                  </a>
-                </li>
-                <li>
-                  <a className="hover:opacity-100" href="#">
-                    Preguntas Frecuentes
-                  </a>
-                </li>
-              </ul>
-            </div>
-
+          <div className="lg:justify-self-end">
             <div id="contacto">
               <h4 className="mb-4 text-sm font-bold uppercase tracking-wider">Contacto</h4>
               <ul className="space-y-3 text-sm opacity-70">
@@ -177,12 +152,8 @@ export function StoreFooter() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/20 pt-6 text-xs opacity-50 sm:flex-row">
-          <p>© 2025 Carancho Outdoors. Todos los derechos reservados.</p>
-          <div className="flex gap-4">
-            <a href="#">Términos y Condiciones</a>
-            <a href="#">Privacidad</a>
-          </div>
+        <div className="mt-10 border-t border-white/20 pt-6 text-xs opacity-50">
+          <p>© {currentYear} Carancho Outdoors. Todos los derechos reservados.</p>
         </div>
       </div>
     </footer>

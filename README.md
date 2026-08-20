@@ -44,6 +44,7 @@ PAYLOAD_SECRET=your-secret
 MERCADOPAGO_ACCESS_TOKEN=APP_USR-xxxxxxxxxxxxxxxxxxxxxxxx
 MERCADOPAGO_WEBHOOK_SECRET=your-webhook-secret
 MERCADOPAGO_PUBLIC_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 3. Install dependencies:

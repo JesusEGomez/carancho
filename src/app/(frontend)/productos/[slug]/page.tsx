@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { StoreFooter } from '@/components/store/StoreFooter'
@@ -9,11 +10,51 @@ import { RelatedProductsCarousel } from '@/components/store/RelatedProductsCarou
 import { formatCurrency } from '@/lib/formatCurrency'
 import { getProductStockPresentation } from '@/lib/product-stock'
 import { getProductBySlug } from '@/lib/store'
+import { absoluteUrl, serializeJsonLd } from '@/lib/seo'
 
 type Props = {
   params: Promise<{
     slug: string
   }>
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+  const data = await getProductBySlug(slug)
+
+  if (!data) {
+    return {
+      robots: {
+        follow: false,
+        index: false,
+      },
+      title: 'Producto no encontrado',
+    }
+  }
+
+  const { product } = data
+  const image = product.featuredImage?.url
+
+  return {
+    alternates: {
+      canonical: `/productos/${product.slug}`,
+    },
+    description: product.shortDescription,
+    openGraph: {
+      description: product.shortDescription,
+      images: image ? [{ alt: product.featuredImage.alt, url: image }] : undefined,
+      title: product.name,
+      type: 'website',
+      url: `/productos/${product.slug}`,
+    },
+    title: product.name,
+    twitter: {
+      card: 'summary_large_image',
+      description: product.shortDescription,
+      images: image ? [image] : undefined,
+      title: product.name,
+    },
+  }
 }
 
 export default async function ProductDetailPage({ params }: Props) {
@@ -37,9 +78,63 @@ export default async function ProductDetailPage({ params }: Props) {
       items.findIndex((candidate) => typeof candidate === 'object' && candidate !== null && candidate.id === item.id) === index,
   )
   const stockPresentation = getProductStockPresentation(product.stock)
+  const productUrl = absoluteUrl(`/productos/${product.slug}`)
+  const productImages = gallery
+    .map((image) => image.url)
+    .filter((url): url is string => Boolean(url))
+    .map((url) => (url.startsWith('http') ? url : absoluteUrl(url)))
+  const productJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    category: product.category.name,
+    description: product.shortDescription,
+    image: productImages,
+    name: product.name,
+    offers: {
+      '@type': 'Offer',
+      availability:
+        product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      price: product.price,
+      priceCurrency: 'ARS',
+      url: productUrl,
+    },
+    url: productUrl,
+  }
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        item: absoluteUrl('/'),
+        name: 'Inicio',
+        position: 1,
+      },
+      {
+        '@type': 'ListItem',
+        item: absoluteUrl('/productos'),
+        name: 'Productos',
+        position: 2,
+      },
+      {
+        '@type': 'ListItem',
+        item: productUrl,
+        name: product.name,
+        position: 3,
+      },
+    ],
+  }
 
   return (
     <div className="min-h-screen bg-white">
+      <script
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(productJsonLd) }}
+        type="application/ld+json"
+      />
+      <script
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
+        type="application/ld+json"
+      />
       <StoreHeader />
 
       <div className="container-shell py-8 sm:py-10">
