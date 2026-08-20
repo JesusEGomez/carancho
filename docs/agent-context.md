@@ -64,6 +64,8 @@ Carancho is a Payload CMS + Next.js commerce experience for fishing, camping, an
 - Product detail visibility for technical specifications and general features is now controlled by persisted booleans on each product, with legacy products auto-enabled when they already contain data.
 - To avoid empty demo states while the CMS has no seed data, the storefront falls back to preview content from `src/lib/storePreview.ts`.
 - The preview layer is temporary presentation data only; Payload remains the intended production data source.
+- That fallback is gated by `isPreviewFallbackEnabled()` in `src/lib/store.ts`: enabled outside production, disabled in production, and forced either way by `STORE_PREVIEW_FALLBACK=true|false`. It had been leaking the demo catalog into the production home page whenever no category was `featured`/`isVisible` or no product was `isFeatured`.
+- With the fallback off, the home page hides the featured categories section when there are none and renders an explicit "todavía no hay productos publicados" card instead of an empty grid.
 - A reusable seed script now exists at `scripts/seed.ts` to populate a baseline admin user plus catalog data in Postgres-backed environments.
 
 ## UI Direction
