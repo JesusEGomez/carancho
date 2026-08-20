@@ -37,11 +37,28 @@ const getParentCategoryId = (category: Category | null | undefined) => {
 const isTopLevelCategory = (category: Category) => !relation<Category>(category.parent)
 const isStoreVisibleCategory = (category: Category) => category.isVisible !== false
 
+/**
+ * A prerender that cannot reach Payload renders an empty storefront and freezes it into
+ * the static HTML, which then ships as a green deploy. Fail the build instead: at request
+ * time degrading is right, at build time it is a silent data loss.
+ */
+const isProductionBuild = () => process.env.NEXT_PHASE === 'phase-production-build'
+
+const degradedNotice = () =>
+  isPreviewFallbackEnabled() ? 'using preview data.' : 'rendering empty storefront sections.'
+
 const getPayloadSafely = async () => {
   try {
     return await getPayloadClient()
   } catch (error) {
-    console.error('Storefront Payload bootstrap failed, falling back to preview data.', error)
+    if (isProductionBuild()) {
+      console.error(
+        'Payload is unreachable during the production build. Refusing to prerender the storefront without catalog data.',
+      )
+      throw error
+    }
+
+    console.error(`Storefront Payload bootstrap failed, ${degradedNotice()}`, error)
     return null
   }
 }
@@ -123,7 +140,7 @@ export async function getFeaturedCategories(limit?: number) {
 
     return docs.slice(0, limit ?? docs.length)
   } catch (error) {
-    console.error('Failed to load featured categories from Payload, using preview data.', error)
+    console.error(`Failed to load featured categories from Payload, ${degradedNotice()}`, error)
     return previewFeaturedCategories(limit)
   }
 }
@@ -155,7 +172,7 @@ export async function getFeaturedProducts(limit = 8) {
 
     return result.docs.map(normalizeProduct).slice(0, limit)
   } catch (error) {
-    console.error('Failed to load featured products from Payload, using preview data.', error)
+    console.error(`Failed to load featured products from Payload, ${degradedNotice()}`, error)
     return previewFeaturedProducts(limit)
   }
 }
@@ -376,7 +393,7 @@ export async function getCatalogData(
       totalProducts: productsResult.totalDocs,
     }
   } catch (error) {
-    console.error('Failed to load catalog data from Payload, using preview data.', error)
+    console.error(`Failed to load catalog data from Payload, ${degradedNotice()}`, error)
     return {
       activeSort,
       categories: previewFallbackCategories,
@@ -470,7 +487,7 @@ export async function getProductBySlug(slug: string) {
       relatedProducts: relatedResult.docs.map(normalizeProduct),
     }
   } catch (error) {
-    console.error(`Failed to load product "${slug}" from Payload, using preview data.`, error)
+    console.error(`Failed to load product "${slug}" from Payload, ${degradedNotice()}`, error)
 
     if (!previewProduct) {
       return null

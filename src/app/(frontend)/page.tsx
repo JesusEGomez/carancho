@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { connection } from 'next/server'
 
 import { FeaturedCategoriesCarousel } from '@/components/store/FeaturedCategoriesCarousel'
 import { FloatingSocialButtons } from '@/components/store/FloatingSocialButtons'
@@ -11,6 +12,12 @@ import { ProductCard } from '@/components/store/ProductCard'
 import { getFeaturedCategories, getFeaturedProducts } from '@/lib/store'
 
 export default async function HomePage() {
+  // The catalog lives in Payload, so this page has to be rendered per request. Without
+  // this the build prerenders it — and the builder has no network route to the database,
+  // so an empty storefront gets baked into the HTML and served until something
+  // revalidates it. `/productos` is already dynamic because it awaits searchParams.
+  await connection()
+
   const [categories, products] = await Promise.all([getFeaturedCategories(), getFeaturedProducts(4)])
 
   return (

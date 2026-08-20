@@ -66,6 +66,9 @@ Carancho is a Payload CMS + Next.js commerce experience for fishing, camping, an
 - The preview layer is temporary presentation data only; Payload remains the intended production data source.
 - That fallback is gated by `isPreviewFallbackEnabled()` in `src/lib/store.ts`: enabled outside production, disabled in production, and forced either way by `STORE_PREVIEW_FALLBACK=true|false`. It had been leaking the demo catalog into the production home page whenever no category was `featured`/`isVisible` or no product was `isFeatured`.
 - With the fallback off, the home page hides the featured categories section when there are none and renders an explicit "todavía no hay productos publicados" card instead of an empty grid.
+- Every storefront route is server-rendered on demand. `/productos` and `/productos/[slug]` already were, because they await `searchParams`/`params`; the home page now calls `await connection()` for the same reason. It used to be prerendered (`○ /`), and since the EasyPanel/Nixpacks builder has no network route to the `carancho_db` service on the Swarm overlay network, the build baked a storefront rendered without any catalog into the HTML and served it until something revalidated it. That, not an empty CMS, is what put the preview catalog on the production home page.
+- `getPayloadSafely()` rethrows instead of degrading when `NEXT_PHASE === 'phase-production-build'`, so a prerender that cannot reach Payload fails the build loudly rather than shipping an empty page as a green deploy.
+- Because no storefront route is cached any more, the `revalidatePath` calls in `src/hooks/revalidateStorefront.ts` no longer have a cache entry to invalidate. They are currently inert and should be removed deliberately rather than left as a false signal.
 - A reusable seed script now exists at `scripts/seed.ts` to populate a baseline admin user plus catalog data in Postgres-backed environments.
 
 ## UI Direction
