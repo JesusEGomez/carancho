@@ -46,14 +46,42 @@ const getPayloadSafely = async () => {
   }
 }
 
+/**
+ * The preview catalog is a local/demo aid only. In production an empty or unreachable
+ * CMS has to render as an empty storefront, never as fictional products and prices.
+ * Set STORE_PREVIEW_FALLBACK to 'true'/'false' to force it either way.
+ */
+const isPreviewFallbackEnabled = () => {
+  if (process.env.STORE_PREVIEW_FALLBACK === 'true') {
+    return true
+  }
+
+  if (process.env.STORE_PREVIEW_FALLBACK === 'false') {
+    return false
+  }
+
+  return process.env.NODE_ENV !== 'production'
+}
+
+const previewFeaturedCategories = (limit?: number) => {
+  if (!isPreviewFallbackEnabled()) {
+    return []
+  }
+
+  return previewCategories.slice(0, limit ?? previewCategories.length).map((category) => ({
+    ...category,
+    heroImage: relation<Media>(category.heroImage),
+  }))
+}
+
+const previewFeaturedProducts = (limit: number) =>
+  isPreviewFallbackEnabled() ? previewProducts.slice(0, limit) : []
+
 export async function getFeaturedCategories(limit?: number) {
   const payload = await getPayloadSafely()
 
   if (!payload) {
-    return previewCategories.slice(0, limit ?? previewCategories.length).map((category) => ({
-      ...category,
-      heroImage: relation<Media>(category.heroImage),
-    }))
+    return previewFeaturedCategories(limit)
   }
 
   try {
@@ -84,23 +112,19 @@ export async function getFeaturedCategories(limit?: number) {
       },
     })
 
-    const docs = result.docs.length
-      ? result.docs.map((category) => ({
-          ...category,
-          heroImage: relation<Media>(category.heroImage),
-        }))
-      : previewCategories
+    if (!result.docs.length) {
+      return previewFeaturedCategories(limit)
+    }
 
-    return docs.slice(0, limit ?? docs.length).map((category) => ({
+    const docs = result.docs.map((category) => ({
       ...category,
       heroImage: relation<Media>(category.heroImage),
     }))
+
+    return docs.slice(0, limit ?? docs.length)
   } catch (error) {
     console.error('Failed to load featured categories from Payload, using preview data.', error)
-    return previewCategories.slice(0, limit ?? previewCategories.length).map((category) => ({
-      ...category,
-      heroImage: relation<Media>(category.heroImage),
-    }))
+    return previewFeaturedCategories(limit)
   }
 }
 
@@ -108,7 +132,7 @@ export async function getFeaturedProducts(limit = 8) {
   const payload = await getPayloadSafely()
 
   if (!payload) {
-    return previewProducts.slice(0, limit)
+    return previewFeaturedProducts(limit)
   }
 
   try {
@@ -125,10 +149,14 @@ export async function getFeaturedProducts(limit = 8) {
       },
     })
 
-    return (result.docs.length ? result.docs.map(normalizeProduct) : previewProducts).slice(0, limit)
+    if (!result.docs.length) {
+      return previewFeaturedProducts(limit)
+    }
+
+    return result.docs.map(normalizeProduct).slice(0, limit)
   } catch (error) {
     console.error('Failed to load featured products from Payload, using preview data.', error)
-    return previewProducts.slice(0, limit)
+    return previewFeaturedProducts(limit)
   }
 }
 
@@ -189,10 +217,12 @@ export async function getCatalogData(
     ]
   }
 
-  const previewSelectedCategory = previewCategories.find((category) => category.slug === categorySlug)
+  const previewFallbackCategories = isPreviewFallbackEnabled() ? previewCategories : []
+  const previewFallbackProducts = isPreviewFallbackEnabled() ? previewProducts : []
+  const previewSelectedCategory = previewFallbackCategories.find((category) => category.slug === categorySlug)
   const fallbackBaseProducts = (previewSelectedCategory
-    ? previewProducts.filter((product) => product.category.slug === previewSelectedCategory.slug)
-    : previewProducts
+    ? previewFallbackProducts.filter((product) => product.category.slug === previewSelectedCategory.slug)
+    : previewFallbackProducts
   ).filter((product) => {
     const term = normalizedSearch.toLowerCase()
 
@@ -224,8 +254,9 @@ export async function getCatalogData(
   const payload = await getPayloadSafely()
 
   if (!payload) {
-    const parentCategories = previewCategories
-    const selectedCategory = previewCategories.find((category) => category.slug === categorySlug) ?? null
+    const parentCategories = previewFallbackCategories
+    const selectedCategory =
+      previewFallbackCategories.find((category) => category.slug === categorySlug) ?? null
 
     return {
       activeSort,
@@ -262,7 +293,7 @@ export async function getCatalogData(
           ...category,
           heroImage: relation<Media>(category.heroImage),
         }))
-      : previewCategories
+      : previewFallbackCategories
 
     const visibleCategories = categories.filter(isStoreVisibleCategory)
     const visibleParentIds = new Set(
@@ -348,7 +379,7 @@ export async function getCatalogData(
     console.error('Failed to load catalog data from Payload, using preview data.', error)
     return {
       activeSort,
-      categories: previewCategories,
+      categories: previewFallbackCategories,
       currentPage: fallbackPage,
       maxPriceRange: fallbackPriceRangeMax,
       activeMaxPrice: fallbackActiveMaxPrice,
@@ -364,7 +395,9 @@ export async function getCatalogData(
 }
 
 export async function getProductBySlug(slug: string) {
-  const previewProduct = previewProducts.find((item) => item.slug === slug)
+  const previewProduct = isPreviewFallbackEnabled()
+    ? previewProducts.find((item) => item.slug === slug)
+    : undefined
   const payload = await getPayloadSafely()
 
   if (!payload) {

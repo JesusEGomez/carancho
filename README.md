@@ -99,7 +99,7 @@ src/
 
 The storefront reads from Payload through `src/lib/store.ts`.
 
-If the CMS has no catalog data yet, the storefront falls back to preview content from `src/lib/storePreview.ts` so the main pages still render with realistic cards and layouts. This is only a presentation fallback for local/demo use.
+If the CMS has no catalog data yet, the storefront falls back to preview content from `src/lib/storePreview.ts` so the main pages still render with realistic cards and layouts. This is only a presentation fallback for local/demo use, so it is **disabled in production**: there an empty or unreachable CMS renders empty sections instead of fictional products. Set `STORE_PREVIEW_FALLBACK=true` or `false` to force it either way.
 
 ## Mercado Pago Checkout Pro
 
