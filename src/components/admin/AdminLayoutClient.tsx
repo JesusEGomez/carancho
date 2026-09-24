@@ -1,31 +1,37 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
 import { AuthProvider, useAuth } from '@/providers/AuthProvider'
 import { QueryProvider } from '@/providers/QueryProvider'
 
+const subscribeToTechnicalAccess = () => () => undefined
+
+function getTechnicalAccessSnapshot() {
+  return typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
+}
+
+function getServerTechnicalAccessSnapshot() {
+  return false
+}
+
 function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { isAuthenticated, isLoading, logout, user } = useAuth()
-  const [showTechnicalAccess, setShowTechnicalAccess] = useState(false)
+  const showTechnicalAccess = useSyncExternalStore(
+    subscribeToTechnicalAccess,
+    getTechnicalAccessSnapshot,
+    getServerTechnicalAccessSnapshot,
+  )
 
   useEffect(() => {
     if (!isLoading && pathname !== '/admin/login' && (!isAuthenticated || user?.role !== 'admin')) {
       router.replace('/admin/login')
     }
   }, [isAuthenticated, isLoading, pathname, router, user])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    setShowTechnicalAccess(['localhost', '127.0.0.1'].includes(window.location.hostname))
-  }, [])
 
   if (pathname === '/admin/login') {
     return <>{children}</>
@@ -50,7 +56,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#fbf7f1]">
-      <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[250px_1fr]">
+      <div className="mx-auto grid min-h-screen max-w-[1600px] md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="flex flex-col border-r border-[#edf0f5] bg-white">
           <div className="border-b border-[#edf0f5] px-7 py-8">
             <p className="font-display text-[34px] font-black leading-9 text-brand-ink">

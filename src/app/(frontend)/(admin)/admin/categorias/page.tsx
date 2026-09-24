@@ -47,17 +47,17 @@ export default function AdminCategoriesPage() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
+        <table className="w-full table-fixed text-left text-sm xl:table-auto">
           <thead className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
             <tr>
-              <th className="px-6 py-4">Nombre</th>
-              <th className="px-6 py-4">Slug</th>
-              <th className="px-6 py-4">Tipo</th>
-              <th className="px-6 py-4">Padre</th>
-              <th className="px-6 py-4">Tienda</th>
-              <th className="px-6 py-4">Navegación</th>
-              <th className="px-6 py-4">Destacada</th>
-              <th className="px-6 py-4 text-right">Acciones</th>
+              <th className="w-[28%] px-3 py-4 sm:px-6">Nombre</th>
+              <th className="hidden px-6 py-4 xl:table-cell">Slug</th>
+              <th className="hidden px-6 py-4 xl:table-cell">Tipo</th>
+              <th className="hidden px-6 py-4 xl:table-cell">Padre</th>
+              <th className="w-[24%] px-3 py-4 sm:px-6">Tienda</th>
+              <th className="hidden px-6 py-4 xl:table-cell">Navegación</th>
+              <th className="hidden px-6 py-4 xl:table-cell">Destacada</th>
+              <th className="sticky right-0 z-10 w-[48%] bg-white px-3 py-4 text-right sm:px-6">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -66,17 +66,17 @@ export default function AdminCategoriesPage() {
 
               return [
                 <tr key={`parent-${category.id}`} className="border-t border-[#f1f4f8]">
-                  <td className="px-6 py-4">
-                    <p className="font-black text-brand-ink">{category.name}</p>
+                  <td className="min-w-0 px-3 py-4 sm:px-6">
+                    <p className="truncate font-black text-brand-ink">{category.name}</p>
                   </td>
-                  <td className="px-6 py-4 text-slate-500">{category.slug}</td>
-                  <td className="px-6 py-4">
+                  <td className="hidden px-6 py-4 text-slate-500 xl:table-cell">{category.slug}</td>
+                  <td className="hidden px-6 py-4 xl:table-cell">
                     <span className="rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-black text-[#2563eb]">
                       Principal
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-slate-500">-</td>
-                  <td className="px-6 py-4">
+                  <td className="hidden px-6 py-4 text-slate-500 xl:table-cell">-</td>
+                  <td className="px-3 py-4 sm:px-6">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-black ${
                         category.isVisible ?? true ? 'bg-[#ecfdf3] text-[#15803d]' : 'bg-[#f3f4f6] text-slate-500'
@@ -85,7 +85,7 @@ export default function AdminCategoriesPage() {
                       {category.isVisible ?? true ? 'Visible' : 'Oculta'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="hidden px-6 py-4 xl:table-cell">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-black ${
                         category.showInNavigation ? 'bg-[#ecfdf3] text-[#15803d]' : 'bg-[#f3f4f6] text-slate-500'
@@ -94,7 +94,7 @@ export default function AdminCategoriesPage() {
                       {category.showInNavigation ? 'Sí' : 'No'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="hidden px-6 py-4 xl:table-cell">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-black ${
                         category.featured ? 'bg-[#fff7f1] text-brand-orange' : 'bg-[#f3f4f6] text-slate-500'
@@ -103,10 +103,10 @@ export default function AdminCategoriesPage() {
                       {category.featured ? 'Sí' : 'No'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-4">
+                  <td className="sticky right-0 z-10 bg-white px-3 py-4 text-right sm:px-6">
+                    <div className="flex items-center justify-end gap-2 lg:gap-4">
                       <button
-                        className="text-sm font-black text-slate-500 hover:text-brand-orange disabled:opacity-50"
+                        className="whitespace-nowrap text-sm font-black text-slate-500 hover:text-brand-orange disabled:opacity-50"
                         disabled={toggleCategoryVisibilityMutation.isPending}
                         onClick={() => {
                           void toggleCategoryVisibilityMutation.mutateAsync({
@@ -126,17 +126,17 @@ export default function AdminCategoriesPage() {
                 </tr>,
                 ...subcategories.map((subcategory) => (
                   <tr key={`child-${subcategory.id}`} className="border-t border-[#f8fafc] bg-[#fcfdff]">
-                    <td className="px-6 py-4">
-                      <p className="font-bold text-brand-ink">└ {subcategory.name}</p>
+                    <td className="min-w-0 px-3 py-4 sm:px-6">
+                      <p className="truncate font-bold text-brand-ink">└ {subcategory.name}</p>
                     </td>
-                    <td className="px-6 py-4 text-slate-500">{subcategory.slug}</td>
-                    <td className="px-6 py-4">
+                    <td className="hidden px-6 py-4 text-slate-500 xl:table-cell">{subcategory.slug}</td>
+                    <td className="hidden px-6 py-4 xl:table-cell">
                       <span className="rounded-full bg-[#f3f4f6] px-3 py-1 text-xs font-black text-slate-500">
                         Subcategoría
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-slate-500">{category.name}</td>
-                    <td className="px-6 py-4">
+                    <td className="hidden px-6 py-4 text-slate-500 xl:table-cell">{category.name}</td>
+                    <td className="px-3 py-4 sm:px-6">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-black ${
                           subcategory.isVisible ?? true ? 'bg-[#ecfdf3] text-[#15803d]' : 'bg-[#f3f4f6] text-slate-500'
@@ -145,7 +145,7 @@ export default function AdminCategoriesPage() {
                         {subcategory.isVisible ?? true ? 'Visible' : 'Oculta'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="hidden px-6 py-4 xl:table-cell">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-black ${
                           subcategory.showInNavigation ? 'bg-[#ecfdf3] text-[#15803d]' : 'bg-[#f3f4f6] text-slate-500'
@@ -154,11 +154,11 @@ export default function AdminCategoriesPage() {
                         {subcategory.showInNavigation ? 'Sí' : 'No'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-slate-500">No</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-4">
+                    <td className="hidden px-6 py-4 text-slate-500 xl:table-cell">No</td>
+                    <td className="sticky right-0 z-10 bg-[#fcfdff] px-3 py-4 text-right sm:px-6">
+                      <div className="flex items-center justify-end gap-2 lg:gap-4">
                         <button
-                          className="text-sm font-black text-slate-500 hover:text-brand-orange disabled:opacity-50"
+                          className="whitespace-nowrap text-sm font-black text-slate-500 hover:text-brand-orange disabled:opacity-50"
                           disabled={toggleCategoryVisibilityMutation.isPending}
                           onClick={() => {
                             void toggleCategoryVisibilityMutation.mutateAsync({

@@ -59,7 +59,7 @@ export default function EditProductPage({ params }: Props) {
     subcategoryId,
   }
 
-  return <ProductForm initialData={initialData} />
+  return <ProductForm initialData={initialData} key={product.id} />
 }
 
 function getParentCategoryId(category: CategoryOption | number | null | undefined) {

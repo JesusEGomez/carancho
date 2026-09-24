@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -69,27 +69,16 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
   const router = useRouter()
   const upsertCategoryMutation = useUpsertCategory()
   const [heroFile, setHeroFile] = useState<File | null>(null)
+  const [removeHeroImage, setRemoveHeroImage] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const {
     formState: { errors },
     handleSubmit,
     register,
-    reset,
   } = useForm<CategoryFormValues>({
     defaultValues: initialData ?? defaultValues,
     resolver: zodResolver(categoryFormSchema) as Resolver<CategoryFormValues>,
   })
-
-  useEffect(() => {
-    if (initialData) {
-      reset(initialData)
-      setHeroFile(null)
-      setUploadError(null)
-      return
-    }
-
-    reset(defaultValues)
-  }, [initialData, reset])
 
   const isSubcategory = Boolean(initialData?.parentId)
   const title = initialData ? 'Editar categoría' : 'Nueva categoría'
@@ -120,7 +109,7 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
               payload: {
                 description: values.description?.trim() || null,
                 featured: isSubcategory ? false : values.featured,
-                heroImage: initialData?.heroImageId ?? null,
+                heroImage: removeHeroImage ? null : initialData?.heroImageId ?? null,
                 isVisible: values.isVisible,
                 name: values.name.trim(),
                 parent: initialData?.parentId ?? null,
@@ -163,17 +152,31 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
             <AdminInput
               accept="image/*"
               className="border-dashed border-slate-300 bg-slate-50 text-sm"
+              key={heroFile ? 'selected-hero-image' : 'empty-hero-image'}
               onChange={(event) => {
                 setHeroFile(event.target.files?.[0] ?? null)
+                setRemoveHeroImage(false)
                 setUploadError(null)
               }}
               type="file"
             />
-            {heroFile ? <span className="text-xs font-medium text-slate-500">Nueva imagen: {heroFile.name}</span> : null}
           </AdminField>
         </div>
 
-        {initialData?.heroImage?.url && !heroFile ? (
+        {heroFile ? (
+          <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500">
+            <span>Nueva imagen: {heroFile.name}</span>
+            <button
+              className="font-black text-brand-orange hover:text-orange-600"
+              onClick={() => setHeroFile(null)}
+              type="button"
+            >
+              Descartar
+            </button>
+          </div>
+        ) : null}
+
+        {initialData?.heroImage?.url && !heroFile && !removeHeroImage ? (
           <div className="rounded-3xl border border-slate-200 p-5">
             <p className="text-sm font-black text-brand-ink">Imagen actual</p>
             <div className="mt-4 flex items-center gap-4">
@@ -185,8 +188,34 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
               <div className="text-sm text-slate-500">
                 <p className="font-bold text-brand-ink">{initialData.heroImage.alt}</p>
                 <p>Se conservará si no subís una nueva imagen.</p>
+                <button
+                  className="mt-3 font-black text-red-600 hover:text-red-700"
+                  onClick={() => {
+                    setRemoveHeroImage(true)
+                    setUploadError(null)
+                  }}
+                  type="button"
+                >
+                  Quitar imagen
+                </button>
               </div>
             </div>
+          </div>
+        ) : null}
+
+        {removeHeroImage ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-red-100 bg-red-50 p-5 text-sm">
+            <div>
+              <p className="font-black text-red-700">La imagen se quitará al guardar.</p>
+              <p className="mt-1 text-red-600">El archivo seguirá disponible en la biblioteca de medios.</p>
+            </div>
+            <button
+              className="font-black text-brand-ink underline underline-offset-2"
+              onClick={() => setRemoveHeroImage(false)}
+              type="button"
+            >
+              Deshacer
+            </button>
           </div>
         ) : null}
 

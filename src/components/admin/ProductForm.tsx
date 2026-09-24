@@ -1,15 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useFieldArray, useForm, useWatch, type FieldErrors, type Resolver } from 'react-hook-form'
+import { useForm, useWatch, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
 import {
   AdminAlert,
   AdminField,
-  AdminFieldError,
   AdminInput,
   AdminSelect,
   AdminTextarea,
@@ -58,21 +57,6 @@ const productFormSchema = z
       })
     }
 
-    if (values.showFeatures && values.features.length === 0) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Agrega al menos una característica para mostrar esta sección',
-        path: ['features'],
-      })
-    }
-
-    if (values.showSpecifications && values.specifications.length === 0) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Agrega al menos una especificación para mostrar esta sección',
-        path: ['specifications'],
-      })
-    }
   })
 
 export type ProductFormValues = z.infer<typeof productFormSchema>
@@ -93,9 +77,6 @@ type UploadErrors = {
   gallery?: string
 }
 
-const emptyFeature = { label: '' }
-const emptySpecification = { label: '', value: '' }
-
 const defaultValues: ProductFormData = {
   badges: [],
   compareAtPrice: '',
@@ -114,17 +95,6 @@ const defaultValues: ProductFormData = {
   status: 'published',
   stock: 0,
   subcategoryId: 0,
-}
-
-function getFieldArrayError<TFieldName extends 'features' | 'specifications'>(
-  errors: FieldErrors<ProductFormValues>,
-  fieldName: TFieldName,
-) {
-  const fieldError = errors[fieldName]
-
-  return fieldError && 'message' in fieldError && typeof fieldError.message === 'string'
-    ? fieldError.message
-    : undefined
 }
 
 function validateImageFile(file: File) {
@@ -190,34 +160,13 @@ export function ProductForm({ initialData }: ProductFormProps) {
     formState: { errors },
     handleSubmit,
     register,
-    reset,
     setValue,
   } = useForm<ProductFormValues>({
     defaultValues: initialData ?? defaultValues,
     resolver: zodResolver(productFormSchema) as Resolver<ProductFormValues>,
   })
 
-  const featuresFieldArray = useFieldArray({
-    control,
-    name: 'features',
-  })
-
-  const specificationsFieldArray = useFieldArray({
-    control,
-    name: 'specifications',
-  })
-
-  useEffect(() => {
-    if (initialData) {
-      reset(initialData)
-      setExistingGallery(initialData.gallery ?? [])
-      setFeaturedFile(null)
-      setGalleryFiles([])
-      setUploadErrors({})
-    }
-  }, [initialData, reset])
-
-  const categories = categoriesQuery.data?.docs ?? []
+  const categories = useMemo(() => categoriesQuery.data?.docs ?? [], [categoriesQuery.data?.docs])
   const parentCategories = useMemo(
     () => categories.filter((category) => !category.parent),
     [categories],
@@ -236,14 +185,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
     control,
     name: 'subcategoryId',
   })
-  const showFeatures = useWatch({
-    control,
-    name: 'showFeatures',
-  })
-  const showSpecifications = useWatch({
-    control,
-    name: 'showSpecifications',
-  })
   const availableSubcategories = useMemo(
     () =>
       categories.filter((category) => {
@@ -261,8 +202,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
   const selectedParentCategory = parentCategories.find((category) => category.id === selectedParentCategoryId)
 
   const nextGalleryNames = useMemo(() => galleryFiles.map((file) => file.name), [galleryFiles])
-  const featuresError = getFieldArrayError(errors, 'features')
-  const specificationsError = getFieldArrayError(errors, 'specifications')
 
   return (
     <section className="surface-card max-w-5xl p-8">
@@ -304,19 +243,17 @@ export function ProductForm({ initialData }: ProductFormProps) {
                     : Number(values.compareAtPrice),
                 description: values.description.trim(),
                 featuredImage: initialData?.featuredImageId ?? null,
-                features: values.showFeatures ? values.features.map((feature) => ({ label: feature.label.trim() })) : [],
+                features: values.features.map((feature) => ({ label: feature.label.trim() })),
                 isFeatured: values.isFeatured,
                 name: values.name.trim(),
                 price: values.price,
                 shortDescription: values.shortDescription.trim(),
                 showFeatures: values.showFeatures,
                 showSpecifications: values.showSpecifications,
-                specifications: values.showSpecifications
-                  ? values.specifications.map((item) => ({
-                      label: item.label.trim(),
-                      value: item.value.trim(),
-                    }))
-                  : [],
+                specifications: values.specifications.map((item) => ({
+                  label: item.label.trim(),
+                  value: item.value.trim(),
+                })),
                 status: values.status,
                 stock: values.stock,
               },
@@ -489,108 +426,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
         <AdminField error={errors.description?.message} label="Descripción" required>
           <AdminTextarea className="min-h-40" {...register('description')} />
         </AdminField>
-
-        <div className="grid gap-4 xl:grid-cols-2">
-          <div className="rounded-3xl border border-slate-200 p-5">
-            <label className="flex items-center gap-3 text-sm font-black text-brand-ink">
-              <input type="checkbox" {...register('showFeatures')} />
-              Mostrar Características Generales
-            </label>
-
-            {showFeatures ? (
-              <>
-                <div className="mt-4 grid gap-3">
-                  {featuresFieldArray.fields.length ? null : (
-                    <p className="text-sm text-slate-500">Agregá las características que quieras mostrar en la ficha.</p>
-                  )}
-                  {featuresFieldArray.fields.map((field, index) => (
-                    <div key={field.id} className="flex flex-col gap-3 sm:flex-row">
-                      <div className="min-w-0 flex-1">
-                        <AdminInput
-                          placeholder="Ej: Mango ergonómico"
-                          {...register(`features.${index}.label`)}
-                        />
-                        <AdminFieldError message={errors.features?.[index]?.label?.message} />
-                      </div>
-                      <button
-                        className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-500 sm:self-start"
-                        onClick={() => featuresFieldArray.remove(index)}
-                        type="button"
-                      >
-                        Quitar
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  className="mt-4 text-sm font-black text-brand-orange"
-                  onClick={() => featuresFieldArray.append(emptyFeature)}
-                  type="button"
-                >
-                  + Agregar característica
-                </button>
-                <AdminFieldError message={featuresError} />
-              </>
-            ) : (
-              <p className="mt-4 text-sm text-slate-500">La sección no se mostrará en el detalle del producto.</p>
-            )}
-          </div>
-
-          <div className="rounded-3xl border border-slate-200 p-5">
-            <label className="flex items-center gap-3 text-sm font-black text-brand-ink">
-              <input type="checkbox" {...register('showSpecifications')} />
-              Mostrar Especificaciones Técnicas
-            </label>
-
-            {showSpecifications ? (
-              <>
-                <div className="mt-4 grid gap-3">
-                  {specificationsFieldArray.fields.length ? null : (
-                    <p className="text-sm text-slate-500">Agregá pares de título y valor según el producto.</p>
-                  )}
-                  {specificationsFieldArray.fields.map((field, index) => (
-                    <div
-                      key={field.id}
-                      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-start"
-                    >
-                      <div className="min-w-0">
-                        <AdminInput
-                          placeholder="Largo"
-                          {...register(`specifications.${index}.label`)}
-                        />
-                        <AdminFieldError message={errors.specifications?.[index]?.label?.message} />
-                      </div>
-                      <div className="min-w-0">
-                        <AdminInput
-                          placeholder="2.10 metros"
-                          {...register(`specifications.${index}.value`)}
-                        />
-                        <AdminFieldError message={errors.specifications?.[index]?.value?.message} />
-                      </div>
-                      <button
-                        className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-500 sm:col-span-2 lg:col-span-1 lg:self-start"
-                        onClick={() => specificationsFieldArray.remove(index)}
-                        type="button"
-                      >
-                        Quitar
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  className="mt-4 text-sm font-black text-brand-orange"
-                  onClick={() => specificationsFieldArray.append(emptySpecification)}
-                  type="button"
-                >
-                  + Agregar especificación
-                </button>
-                <AdminFieldError message={specificationsError} />
-              </>
-            ) : (
-              <p className="mt-4 text-sm text-slate-500">La sección no se mostrará en el detalle del producto.</p>
-            )}
-          </div>
-        </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-brand-ink">
