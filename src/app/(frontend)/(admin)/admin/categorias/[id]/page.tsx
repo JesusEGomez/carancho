@@ -57,5 +57,5 @@ export default function EditCategoryPage({ params }: Props) {
     showInNavigation: category.showInNavigation ?? false,
   }
 
-  return <CategoryForm initialData={initialData} />
+  return <CategoryForm initialData={initialData} key={category.id} />
 }
