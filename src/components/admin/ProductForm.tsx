@@ -46,7 +46,7 @@ const productFormSchema = z
     specifications: z.array(specificationSchema).default([]),
     status: z.enum(['published', 'draft']),
     stock: z.coerce.number().min(0, 'El stock debe ser mayor o igual a 0'),
-    subcategoryId: z.coerce.number().min(1, 'Selecciona una subcategoría'),
+    subcategoryId: z.coerce.number().min(0),
   })
   .superRefine((values, context) => {
     if (values.compareAtPrice !== '' && Number(values.compareAtPrice) < values.price) {
@@ -236,7 +236,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
               id: initialData?.id ? String(initialData.id) : null,
               payload: {
                 badges: values.badges,
-                category: values.subcategoryId,
+                category: values.subcategoryId || values.parentCategoryId,
                 compareAtPrice:
                   values.compareAtPrice === '' || values.compareAtPrice === undefined
                     ? null
@@ -289,14 +289,14 @@ export function ProductForm({ initialData }: ProductFormProps) {
           </AdminField>
 
           <div className="grid gap-2">
-            <AdminField error={errors.subcategoryId?.message} label="Subcategoría" required>
+            <AdminField error={errors.subcategoryId?.message} label="Subcategoría (opcional)">
               <AdminSelect
                 {...register('subcategoryId')}
                 disabled={!selectedParentCategoryId}
                 value={selectedSubcategoryId}
               >
                 <option value={0}>
-                  {selectedParentCategoryId ? 'Seleccionar subcategoría' : 'Primero elegí una categoría'}
+                  {selectedParentCategoryId ? 'Sin subcategoría' : 'Primero elegí una categoría'}
                 </option>
                 {availableSubcategories.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -309,8 +309,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
               <div className="text-xs text-slate-500">
                 {selectedParentCategoryId
                   ? availableSubcategories.length
-                    ? `Subcategorías disponibles para ${selectedParentCategory?.name}.`
-                    : `Todavía no hay subcategorías para ${selectedParentCategory?.name}. Creala desde Categorías.`
+                    ? `Podés elegir una subcategoría de ${selectedParentCategory?.name} o guardar el producto solo en la categoría.`
+                    : `Podés guardar el producto en ${selectedParentCategory?.name} sin crear una subcategoría.`
                   : 'Elegí una categoría para ver sus subcategorías disponibles.'}
               </div>
             </div>
