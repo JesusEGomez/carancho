@@ -103,9 +103,11 @@ export async function buildValidatedOrderData(input: CreateOrderRequest) {
 
 export async function getOrderConfirmation(orderId: number, confirmationToken: string) {
   const payload = await getPayloadClient()
+  // A missing order must look exactly like a wrong token so ids cannot be enumerated.
   const order = await payload.findByID({
     collection: 'orders',
     depth: 1,
+    disableErrors: true,
     id: orderId,
   })
 

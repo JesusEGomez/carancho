@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getOrderConfirmation = vi.fn()
 const paymentGet = vi.fn()
+const merchantOrderGet = vi.fn()
 const payloadUpdate = vi.fn()
 const notify = vi.fn()
 const getAdminNotifier = vi.fn()
@@ -26,7 +27,7 @@ vi.mock('@/lib/notifications', () => ({
 vi.mock('mercadopago', () => ({
   MercadoPagoConfig: class {},
   MerchantOrder: class {
-    get = vi.fn()
+    get = merchantOrderGet
   },
   Payment: class {
     get = paymentGet
@@ -78,6 +79,7 @@ describe('reconcileMercadoPagoOrder', () => {
     vi.stubEnv('MERCADOPAGO_PUBLIC_BASE_URL', 'https://example.com')
     getOrderConfirmation.mockReset()
     paymentGet.mockReset()
+    merchantOrderGet.mockReset()
     payloadUpdate.mockReset()
     payloadUpdate.mockImplementation(async ({ data, id }) => ({ ...buildOrder(), ...data, id }))
     notify.mockReset()
@@ -145,6 +147,59 @@ describe('reconcileMercadoPagoOrder', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(getAdminNotifier).not.toHaveBeenCalled()
     expect(notify).not.toHaveBeenCalled()
+  })
+
+  it('returns the order unchanged when Mercado Pago does not know the payment id', async () => {
+    const order = buildOrder()
+    getOrderConfirmation.mockResolvedValue(order)
+    paymentGet.mockRejectedValue({ error: 'not_found', message: 'Payment not found', status: 404 })
+
+    const result = await reconcile()
+
+    expect(result).toBe(order)
+    expect(payloadUpdate).not.toHaveBeenCalled()
+  })
+
+  it('returns the order unchanged when Mercado Pago does not know the merchant order id', async () => {
+    const order = buildOrder()
+    getOrderConfirmation.mockResolvedValue(order)
+    merchantOrderGet.mockRejectedValue({ error: 'not_found', status: 404 })
+    const { reconcileMercadoPagoOrder } = await import('@/lib/mercadopago/server')
+
+    const result = await reconcileMercadoPagoOrder({
+      merchantOrderId: '900',
+      orderId: 2,
+      token: 'token-expensive',
+    })
+
+    expect(result).toBe(order)
+    expect(paymentGet).not.toHaveBeenCalled()
+    expect(payloadUpdate).not.toHaveBeenCalled()
+  })
+
+  it('returns the order unchanged when the merchant order payment is not found', async () => {
+    const order = buildOrder()
+    getOrderConfirmation.mockResolvedValue(order)
+    merchantOrderGet.mockResolvedValue({ id: 900, payments: [{ id: 777, status: 'approved' }] })
+    paymentGet.mockRejectedValue({ error: 'not_found', status: 404 })
+    const { reconcileMercadoPagoOrder } = await import('@/lib/mercadopago/server')
+
+    const result = await reconcileMercadoPagoOrder({
+      merchantOrderId: '900',
+      orderId: 2,
+      token: 'token-expensive',
+    })
+
+    expect(result).toBe(order)
+    expect(payloadUpdate).not.toHaveBeenCalled()
+  })
+
+  it('still rejects on non-404 Mercado Pago errors', async () => {
+    getOrderConfirmation.mockResolvedValue(buildOrder())
+    const serverError = { error: 'internal_error', status: 500 }
+    paymentGet.mockRejectedValue(serverError)
+
+    await expect(reconcile()).rejects.toBe(serverError)
   })
 
   it('returns the order unchanged when the return url carries payment_id=null', async () => {

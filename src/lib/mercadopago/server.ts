@@ -328,22 +328,54 @@ export async function reconcileMercadoPagoOrder(args: {
   const paymentId = parseMercadoPagoId(args.paymentId)
   const merchantOrderId = parseMercadoPagoId(args.merchantOrderId)
 
+  // Return URL ids are untrusted: an unknown or foreign id (MP 404) leaves
+  // the order unchanged instead of failing the status request.
   if (paymentId) {
     const paymentClient = getPaymentClient()
-    const payment = await paymentClient.get({ id: Number(paymentId) })
+    const payment = await getUnlessNotFound(paymentClient.get({ id: Number(paymentId) }))
+
+    if (!payment) {
+      console.warn('Mercado Pago payment from checkout return was not found', {
+        orderId: order.id,
+        paymentId,
+      })
+      return order
+    }
+
     return applyPaymentStateToOrder({ order, payment })
   }
 
   if (merchantOrderId) {
     const merchantOrderClient = getMerchantOrderClient()
-    const merchantOrder = await merchantOrderClient.get({
-      merchantOrderId: Number(merchantOrderId),
-    })
+    const merchantOrder = await getUnlessNotFound(
+      merchantOrderClient.get({
+        merchantOrderId: Number(merchantOrderId),
+      }),
+    )
+
+    if (!merchantOrder) {
+      console.warn('Mercado Pago merchant order from checkout return was not found', {
+        merchantOrderId,
+        orderId: order.id,
+      })
+      return order
+    }
+
     const latestPayment = getLatestMerchantOrderPayment(merchantOrder)
 
     if (latestPayment?.id) {
       const paymentClient = getPaymentClient()
-      const payment = await paymentClient.get({ id: latestPayment.id })
+      const payment = await getUnlessNotFound(paymentClient.get({ id: latestPayment.id }))
+
+      if (!payment) {
+        console.warn('Mercado Pago payment from merchant order was not found', {
+          merchantOrderId,
+          orderId: order.id,
+          paymentId: latestPayment.id,
+        })
+        return order
+      }
+
       return applyPaymentStateToOrder({ order, payment })
     }
   }
