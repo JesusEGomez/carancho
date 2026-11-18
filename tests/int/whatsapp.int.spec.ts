@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildWhatsAppCheckoutMessage, createWhatsAppUrl } from '@/lib/alerts/whatsapp'
+import {
+  buildWhatsAppCheckoutMessage,
+  createWhatsAppUrl,
+  normalizeWhatsAppPhone,
+} from '@/lib/alerts/whatsapp'
 
 describe('WhatsApp alerts', () => {
   it('builds a checkout message with order, customer and item summary', () => {
@@ -39,5 +43,28 @@ describe('WhatsApp alerts', () => {
     })
 
     expect(url).toBe('https://wa.me/5491155551111?text=Hola%20Carancho')
+  })
+
+  it.each([
+    ['3434677009', '5493434677009'],
+    ['343 467-7009', '5493434677009'],
+    ['0343 4677009', '5493434677009'],
+    ['+54 343 4677009', '5493434677009'],
+    ['+54 0343 4677009', '5493434677009'],
+    ['+54 9 343 4677009', '5493434677009'],
+    ['0054 9 343 4677009', '5493434677009'],
+  ])('normalizes %s to the international WhatsApp format', (input, expected) => {
+    expect(normalizeWhatsAppPhone(input)).toBe(expected)
+  })
+
+  it.each([
+    ['+1 415 555 2671', '14155552671'],
+    ['+44 7911 123456', '447911123456'],
+    ['12345', '12345'],
+    ['', ''],
+    // The local "15" mobile prefix is not supported: store numbers without it.
+    ['+54 11 15 5555-1111', '54111555551111'],
+  ])('leaves %s untouched', (input, expected) => {
+    expect(normalizeWhatsAppPhone(input)).toBe(expected)
   })
 })
