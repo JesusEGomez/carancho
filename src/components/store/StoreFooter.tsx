@@ -132,8 +132,7 @@ export function StoreFooter() {
               <span className="text-base font-extrabold uppercase tracking-tight">Carancho Outdoors</span>
             </div>
             <p className="text-sm leading-relaxed opacity-70">
-              Pasión por la pesca deportiva y dedicación a tu hogar. Ofrecemos los mejores productos
-              con atención personalizada.
+              Todo para pesca, caza y camping. Asesoramiento de verdad.
             </p>
           </div>
 
