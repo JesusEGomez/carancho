@@ -38,6 +38,27 @@ describe('Mercado Pago webhook route', () => {
     })
   })
 
+  it('acknowledges ignored notifications with 200 so Mercado Pago stops retrying', async () => {
+    handleMercadoPagoWebhook.mockResolvedValue({
+      processed: false,
+      reason: 'unsupported_topic',
+      status: 200,
+    })
+
+    const { POST } = await import('@/app/api/payments/mercadopago/webhook/route')
+    const response = await POST(
+      new Request('https://example.com/api/payments/mercadopago/webhook', {
+        body: JSON.stringify({ type: 'topic_claims_integration_wh' }),
+        headers: {
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      }),
+    )
+
+    expect(response.status).toBe(200)
+  })
+
   it('returns 500 when webhook processing throws', async () => {
     handleMercadoPagoWebhook.mockRejectedValue(new Error('boom'))
 

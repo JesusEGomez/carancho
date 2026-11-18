@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const getOrderConfirmation = vi.fn()
 const paymentGet = vi.fn()
 const payloadUpdate = vi.fn()
+const notify = vi.fn()
+const getAdminNotifier = vi.fn()
 
 vi.mock('server-only', () => ({}))
 
@@ -15,6 +17,10 @@ vi.mock('@/lib/payload', () => ({
   getPayloadClient: async () => ({
     update: payloadUpdate,
   }),
+}))
+
+vi.mock('@/lib/notifications', () => ({
+  getAdminNotifier,
 }))
 
 vi.mock('mercadopago', () => ({
@@ -74,7 +80,12 @@ describe('reconcileMercadoPagoOrder', () => {
     paymentGet.mockReset()
     payloadUpdate.mockReset()
     payloadUpdate.mockImplementation(async ({ data, id }) => ({ ...buildOrder(), ...data, id }))
+    notify.mockReset()
+    notify.mockResolvedValue({ delivered: true })
+    getAdminNotifier.mockReset()
+    getAdminNotifier.mockResolvedValue({ notify })
     vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -117,14 +128,40 @@ describe('reconcileMercadoPagoOrder', () => {
 
     expect(payloadUpdate).not.toHaveBeenCalled()
     expect(result).toBe(order)
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('does not belong to the order'),
       expect.objectContaining({
+        orderExternalReference: 'order-expensive',
         orderId: 2,
+        orderTotal: 150000,
+        paymentAmount: 100,
+        paymentCurrency: 'ARS',
+        paymentExternalReference: 'order-cheap',
         paymentId: '777',
         reason: 'external_reference_mismatch',
       }),
     )
+    // The public status route must not be able to trigger admin emails.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(getAdminNotifier).not.toHaveBeenCalled()
+    expect(notify).not.toHaveBeenCalled()
+  })
+
+  it('returns the order unchanged when the return url carries payment_id=null', async () => {
+    const order = buildOrder()
+    getOrderConfirmation.mockResolvedValue(order)
+    const { reconcileMercadoPagoOrder } = await import('@/lib/mercadopago/server')
+
+    const result = await reconcileMercadoPagoOrder({
+      merchantOrderId: 'null',
+      orderId: 2,
+      paymentId: 'null',
+      token: 'token-expensive',
+    })
+
+    expect(paymentGet).not.toHaveBeenCalled()
+    expect(payloadUpdate).not.toHaveBeenCalled()
+    expect(result).toBe(order)
   })
 
   it('ignores a payment whose amount does not match the order total', async () => {
@@ -136,7 +173,7 @@ describe('reconcileMercadoPagoOrder', () => {
 
     expect(payloadUpdate).not.toHaveBeenCalled()
     expect(result).toBe(order)
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ reason: 'amount_mismatch' }),
     )
@@ -151,7 +188,7 @@ describe('reconcileMercadoPagoOrder', () => {
 
     expect(payloadUpdate).not.toHaveBeenCalled()
     expect(result).toBe(order)
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ reason: 'currency_mismatch' }),
     )
@@ -166,7 +203,7 @@ describe('reconcileMercadoPagoOrder', () => {
 
     expect(payloadUpdate).not.toHaveBeenCalled()
     expect(result).toBe(order)
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ reason: 'order_not_mercadopago' }),
     )

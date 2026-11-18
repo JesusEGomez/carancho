@@ -12,7 +12,7 @@ export function createEmailNotifier(config: EmailNotifierConfig): AdminNotifier 
     async notify(alert: AdminAlert): Promise<AlertResult> {
       try {
         await config.payload.sendEmail({
-          subject: `Nueva compra confirmada - Pedido #${alert.orderId}`,
+          subject: alert.subject ?? `Nueva compra confirmada - Pedido #${alert.orderId}`,
           text: alert.message,
           to: config.to,
         })

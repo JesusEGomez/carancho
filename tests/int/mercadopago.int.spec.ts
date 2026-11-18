@@ -11,6 +11,9 @@ import {
   getLatestMerchantOrderPayment,
   getPaymentOrderMismatch,
   mapMercadoPagoPayment,
+  normalizeArgentinePhoneNumber,
+  normalizeNotificationTopic,
+  parseMercadoPagoStatusQuery,
   verifyMercadoPagoWebhookSignature,
 } from '@/lib/mercadopago/shared'
 
@@ -39,11 +42,28 @@ describe('Mercado Pago helpers', () => {
     })
 
     expect(preference.auto_return).toBe('approved')
-    expect(preference.notification_url).toBe('https://example.com/api/payments/mercadopago/webhook')
+    expect(preference.notification_url).toBe(
+      'https://example.com/api/payments/mercadopago/webhook?source_news=webhooks',
+    )
     expect(preference.back_urls?.success).toBe(
       'https://example.com/checkout/retorno/success/99?token=token-123',
     )
     expect(preference.external_reference).toBe('order-123')
+  })
+
+  it('adds source_news=webhooks to a notification url that already has a query string', () => {
+    const preference = buildPreferenceRequest({
+      externalReference: 'order-123',
+      items: [],
+      metadata: { confirmationToken: 'token-123', orderId: 99 },
+      notificationUrl: 'https://example.com/api/payments/mercadopago/webhook?env=prod',
+      payer: { email: 'buyer@example.com' },
+      publicBaseUrl: 'https://example.com',
+    })
+
+    expect(preference.notification_url).toBe(
+      'https://example.com/api/payments/mercadopago/webhook?env=prod&source_news=webhooks',
+    )
   })
 
   it('maps approved payments to confirmed local orders', () => {
@@ -178,6 +198,38 @@ describe('Mercado Pago helpers', () => {
     } as MerchantOrderResponse
 
     expect(getLatestMerchantOrderPayment(merchantOrder)?.id).toBe(101)
+  })
+
+  it('normalizes Argentine phone numbers to their national form', () => {
+    expect(normalizeArgentinePhoneNumber('+54 9 11 5555-1111')).toBe('1155551111')
+    expect(normalizeArgentinePhoneNumber('+54 11 5555-1111')).toBe('1155551111')
+    expect(normalizeArgentinePhoneNumber('011 5555-1111')).toBe('1155551111')
+    expect(normalizeArgentinePhoneNumber('9 351 555-1234')).toBe('3515551234')
+    expect(normalizeArgentinePhoneNumber('(0351) 555-1234')).toBe('3515551234')
+    expect(normalizeArgentinePhoneNumber('11 5555 1111')).toBe('1155551111')
+    expect(normalizeArgentinePhoneNumber('')).toBe('')
+  })
+
+  it('treats webhook and IPN merchant order topics the same', () => {
+    expect(normalizeNotificationTopic('payment')).toBe('payment')
+    expect(normalizeNotificationTopic('topic_merchant_order_wh')).toBe('merchant_order')
+    expect(normalizeNotificationTopic('merchant_order')).toBe('merchant_order')
+    expect(normalizeNotificationTopic('topic_claims_integration_wh')).toBeNull()
+  })
+
+  it('treats placeholder or non-numeric return ids as absent', () => {
+    const query = parseMercadoPagoStatusQuery(
+      new URLSearchParams(
+        'payment_id=null&collection_id=undefined&merchant_order_id=&preference_id=pref-1&status=null',
+      ),
+    )
+
+    expect(query.paymentId).toBeNull()
+    expect(query.collectionId).toBeNull()
+    expect(query.merchantOrderId).toBeNull()
+    expect(query.preferenceId).toBe('pref-1')
+    expect(parseMercadoPagoStatusQuery(new URLSearchParams('payment_id=abc12')).paymentId).toBeNull()
+    expect(parseMercadoPagoStatusQuery(new URLSearchParams('payment_id=12345')).paymentId).toBe('12345')
   })
 
   describe('getPaymentOrderMismatch', () => {
