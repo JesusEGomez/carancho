@@ -16,6 +16,7 @@ import {
   getMercadoPagoInitPoint,
   getNotificationDataId,
   getNotificationType,
+  getPaymentOrderMismatch,
   mapMercadoPagoPayment,
   splitCustomerName,
   verifyMercadoPagoWebhookSignature,
@@ -101,8 +102,19 @@ async function applyPaymentStateToOrder(args: {
   order: NonNullable<MercadoPagoOrder>
   payment: PaymentResponse
 }) {
-  const payload = await getPayloadClient()
   const mapped = mapMercadoPagoPayment(args.payment)
+  const mismatch = getPaymentOrderMismatch(args.order, args.payment)
+
+  if (mismatch) {
+    console.warn('Ignoring Mercado Pago payment that does not belong to the order', {
+      orderId: args.order.id,
+      paymentId: mapped.providerPaymentId,
+      reason: mismatch,
+    })
+    return args.order
+  }
+
+  const payload = await getPayloadClient()
 
   // Notifications can arrive out of order: never downgrade a paid order
   // unless the payment moved to a genuine post-approval state.

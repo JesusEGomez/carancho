@@ -9,6 +9,7 @@ import {
   buildMercadoPagoWebhookManifest,
   buildPreferenceRequest,
   getLatestMerchantOrderPayment,
+  getPaymentOrderMismatch,
   mapMercadoPagoPayment,
   verifyMercadoPagoWebhookSignature,
 } from '@/lib/mercadopago/shared'
@@ -39,7 +40,9 @@ describe('Mercado Pago helpers', () => {
 
     expect(preference.auto_return).toBe('approved')
     expect(preference.notification_url).toBe('https://example.com/api/payments/mercadopago/webhook')
-    expect(preference.back_urls?.success).toBe('https://example.com/checkout/retorno/success/99?token=token-123')
+    expect(preference.back_urls?.success).toBe(
+      'https://example.com/checkout/retorno/success/99?token=token-123',
+    )
     expect(preference.external_reference).toBe('order-123')
   })
 
@@ -175,5 +178,51 @@ describe('Mercado Pago helpers', () => {
     } as MerchantOrderResponse
 
     expect(getLatestMerchantOrderPayment(merchantOrder)?.id).toBe(101)
+  })
+
+  describe('getPaymentOrderMismatch', () => {
+    const order = {
+      currency: 'ARS',
+      externalReference: 'order-abc',
+      paymentProvider: 'mercadopago',
+      total: 2500.5,
+    }
+    const payment = {
+      currency_id: 'ARS',
+      external_reference: 'order-abc',
+      transaction_amount: 2500.5,
+    }
+
+    it('accepts a payment that matches the order', () => {
+      expect(getPaymentOrderMismatch(order, payment)).toBeNull()
+    })
+
+    it('rejects payments that do not belong to the order', () => {
+      expect(getPaymentOrderMismatch({ ...order, paymentProvider: 'whatsapp' }, payment)).toBe(
+        'order_not_mercadopago',
+      )
+      expect(
+        getPaymentOrderMismatch(order, { ...payment, external_reference: 'order-other' }),
+      ).toBe('external_reference_mismatch')
+      expect(
+        getPaymentOrderMismatch(
+          { ...order, externalReference: null },
+          { ...payment, external_reference: undefined },
+        ),
+      ).toBe('external_reference_mismatch')
+      expect(getPaymentOrderMismatch(order, { ...payment, transaction_amount: 10 })).toBe(
+        'amount_mismatch',
+      )
+      expect(getPaymentOrderMismatch(order, { ...payment, transaction_amount: undefined })).toBe(
+        'amount_mismatch',
+      )
+      expect(getPaymentOrderMismatch(order, { ...payment, currency_id: 'USD' })).toBe(
+        'currency_mismatch',
+      )
+    })
+
+    it('falls back to ARS when the order has no currency', () => {
+      expect(getPaymentOrderMismatch({ ...order, currency: null }, payment)).toBeNull()
+    })
   })
 })

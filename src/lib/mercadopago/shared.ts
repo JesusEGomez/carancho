@@ -226,6 +226,55 @@ export function mapMercadoPagoPayment(payment: PaymentResponse): MercadoPagoReso
   }
 }
 
+// Orders.currency is required with this default; used only if a legacy order lacks it.
+const DEFAULT_ORDER_CURRENCY = 'ARS'
+
+export type MercadoPagoPaymentMatchOrder = {
+  currency?: string | null
+  externalReference?: string | null
+  paymentProvider?: string | null
+  total: number
+}
+
+function toCents(amount: number) {
+  return Math.round(amount * 100)
+}
+
+/**
+ * Returns the reason a Mercado Pago payment must not be applied to an order,
+ * or null when the payment belongs to it. Payment ids reach the server from
+ * untrusted query strings, so a payment for another (cheaper) order must never
+ * settle this one.
+ */
+export function getPaymentOrderMismatch(
+  order: MercadoPagoPaymentMatchOrder,
+  payment: Pick<PaymentResponse, 'currency_id' | 'external_reference' | 'transaction_amount'>,
+): string | null {
+  if (order.paymentProvider !== 'mercadopago') {
+    return 'order_not_mercadopago'
+  }
+
+  if (!order.externalReference || payment.external_reference !== order.externalReference) {
+    return 'external_reference_mismatch'
+  }
+
+  if (
+    typeof payment.transaction_amount !== 'number' ||
+    !Number.isFinite(payment.transaction_amount) ||
+    toCents(payment.transaction_amount) !== toCents(order.total)
+  ) {
+    return 'amount_mismatch'
+  }
+
+  const expectedCurrency = order.currency || DEFAULT_ORDER_CURRENCY
+
+  if (payment.currency_id !== expectedCurrency) {
+    return 'currency_mismatch'
+  }
+
+  return null
+}
+
 export function getLatestMerchantOrderPayment(merchantOrder: MerchantOrderResponse) {
   const payments = merchantOrder.payments?.filter((payment) => typeof payment.id === 'number') ?? []
   const sorted = payments.sort((left, right) => {
