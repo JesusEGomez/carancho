@@ -9,6 +9,7 @@ import { createPaymentUnavailableError, CheckoutDomainError } from '@/lib/checko
 import { getPayloadClient } from '@/lib/payload'
 import type { CreateOrderRequest } from '@/lib/checkout-schema'
 import { buildValidatedOrderData, getOrderConfirmation } from '@/lib/checkout'
+import { getAdminNotifier } from '@/lib/notifications'
 import {
   buildMercadoPagoWebhookDebug,
   buildPreferenceRequest,
@@ -16,7 +17,11 @@ import {
   getMercadoPagoInitPoint,
   getNotificationDataId,
   getNotificationType,
+  getPaymentOrderMismatch,
   mapMercadoPagoPayment,
+  normalizeArgentinePhoneNumber,
+  normalizeNotificationTopic,
+  parseMercadoPagoId,
   splitCustomerName,
   verifyMercadoPagoWebhookSignature,
 } from '@/lib/mercadopago/shared'
@@ -80,15 +85,14 @@ function buildPreferenceItems(order: NonNullable<MercadoPagoOrder>) {
 
 function buildPreferencePayer(order: NonNullable<MercadoPagoOrder>): PreferenceRequest['payer'] {
   const { firstName, lastName } = splitCustomerName(order.customerName)
-  const digits = order.customerPhone.replace(/\D/g, '')
+  // Argentine area codes have 2 to 4 digits and cannot be split reliably,
+  // so the whole national number goes in `number` and area_code is omitted.
+  const phoneNumber = normalizeArgentinePhoneNumber(order.customerPhone)
 
   return {
     email: order.customerEmail,
     name: firstName || order.customerName,
-    phone: {
-      area_code: digits.slice(0, 4) || undefined,
-      number: digits.slice(4) || digits || undefined,
-    },
+    phone: phoneNumber ? { number: phoneNumber } : undefined,
     surname: lastName || undefined,
   }
 }
@@ -97,12 +101,87 @@ function createExternalReference() {
   return `order-${randomUUID()}`
 }
 
+function notifyAdminOfPaymentMismatch(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  details: { orderId: number; paymentId?: string; reason: string },
+) {
+  // Fire-and-forget: an alert failure must never affect payment processing.
+  void getAdminNotifier(payload)
+    .then((notifier) =>
+      notifier.notify({
+        message: [
+          'Pago de Mercado Pago requiere revisión manual',
+          `Pedido #${details.orderId}`,
+          `Pago #${details.paymentId ?? 'desconocido'} - motivo: ${details.reason}`,
+        ].join('\n'),
+        orderId: details.orderId,
+        subject: `Pago requiere revisión manual - Pedido #${details.orderId}`,
+      }),
+    )
+    .catch((error) => {
+      console.error('Failed to send Mercado Pago payment mismatch alert', {
+        message: error instanceof Error ? error.message : 'unknown_error',
+        orderId: details.orderId,
+      })
+    })
+}
+
+// The SDK rethrows the Mercado Pago JSON error body, e.g. { error: 'not_found', status: 404 }.
+function isMercadoPagoNotFoundError(error: unknown) {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    Number((error as { status: unknown }).status) === 404
+  )
+}
+
+/** Resolves to null when Mercado Pago answers 404; any other failure is rethrown. */
+async function getUnlessNotFound<T>(request: Promise<T>): Promise<T | null> {
+  try {
+    return await request
+  } catch (error) {
+    if (isMercadoPagoNotFoundError(error)) {
+      return null
+    }
+
+    throw error
+  }
+}
+
 async function applyPaymentStateToOrder(args: {
   order: NonNullable<MercadoPagoOrder>
   payment: PaymentResponse
+  // Only the signed webhook path alerts the admin: the public status route
+  // can be replayed at will and must not be able to spam the inbox.
+  notifyOnMismatch?: boolean
 }) {
-  const payload = await getPayloadClient()
   const mapped = mapMercadoPagoPayment(args.payment)
+  const mismatch = getPaymentOrderMismatch(args.order, args.payment)
+  const payload = await getPayloadClient()
+
+  if (mismatch) {
+    // The order status is intentionally left untouched: a human must review it.
+    console.error('Ignoring Mercado Pago payment that does not belong to the order; needs manual review', {
+      orderCurrency: args.order.currency,
+      orderExternalReference: args.order.externalReference,
+      orderId: args.order.id,
+      orderTotal: args.order.total,
+      paymentAmount: args.payment.transaction_amount,
+      paymentCurrency: args.payment.currency_id,
+      paymentExternalReference: args.payment.external_reference,
+      paymentId: mapped.providerPaymentId,
+      reason: mismatch,
+    })
+    if (args.notifyOnMismatch) {
+      notifyAdminOfPaymentMismatch(payload, {
+        orderId: args.order.id,
+        paymentId: mapped.providerPaymentId,
+        reason: mismatch,
+      })
+    }
+    return args.order
+  }
 
   // Notifications can arrive out of order: never downgrade a paid order
   // unless the payment moved to a genuine post-approval state.
@@ -246,22 +325,57 @@ export async function reconcileMercadoPagoOrder(args: {
     })
   }
 
-  if (args.paymentId) {
+  const paymentId = parseMercadoPagoId(args.paymentId)
+  const merchantOrderId = parseMercadoPagoId(args.merchantOrderId)
+
+  // Return URL ids are untrusted: an unknown or foreign id (MP 404) leaves
+  // the order unchanged instead of failing the status request.
+  if (paymentId) {
     const paymentClient = getPaymentClient()
-    const payment = await paymentClient.get({ id: Number(args.paymentId) })
+    const payment = await getUnlessNotFound(paymentClient.get({ id: Number(paymentId) }))
+
+    if (!payment) {
+      console.warn('Mercado Pago payment from checkout return was not found', {
+        orderId: order.id,
+        paymentId,
+      })
+      return order
+    }
+
     return applyPaymentStateToOrder({ order, payment })
   }
 
-  if (args.merchantOrderId) {
+  if (merchantOrderId) {
     const merchantOrderClient = getMerchantOrderClient()
-    const merchantOrder = await merchantOrderClient.get({
-      merchantOrderId: Number(args.merchantOrderId),
-    })
+    const merchantOrder = await getUnlessNotFound(
+      merchantOrderClient.get({
+        merchantOrderId: Number(merchantOrderId),
+      }),
+    )
+
+    if (!merchantOrder) {
+      console.warn('Mercado Pago merchant order from checkout return was not found', {
+        merchantOrderId,
+        orderId: order.id,
+      })
+      return order
+    }
+
     const latestPayment = getLatestMerchantOrderPayment(merchantOrder)
 
     if (latestPayment?.id) {
       const paymentClient = getPaymentClient()
-      const payment = await paymentClient.get({ id: latestPayment.id })
+      const payment = await getUnlessNotFound(paymentClient.get({ id: latestPayment.id }))
+
+      if (!payment) {
+        console.warn('Mercado Pago payment from merchant order was not found', {
+          merchantOrderId,
+          orderId: order.id,
+          paymentId: latestPayment.id,
+        })
+        return order
+      }
+
       return applyPaymentStateToOrder({ order, payment })
     }
   }
@@ -280,10 +394,9 @@ export async function handleMercadoPagoWebhook(args: {
   const requestId = args.requestHeaders.get('x-request-id')
   const signatureHeader = args.requestHeaders.get('x-signature')
 
-  if (!dataId || !topic || !requestId || !env.webhookSecret) {
+  if (!dataId || !topic) {
     console.warn('Ignoring Mercado Pago webhook with missing metadata', {
       dataId,
-      hasSecret: Boolean(env.webhookSecret),
       requestId,
       topic,
     })
@@ -291,6 +404,33 @@ export async function handleMercadoPagoWebhook(args: {
       processed: false,
       reason: 'missing_metadata',
       status: 400,
+    } as const
+  }
+
+  if (!env.webhookSecret) {
+    console.error('Mercado Pago webhook secret is not configured', { dataId, topic })
+    return {
+      processed: false,
+      reason: 'webhook_secret_not_configured',
+      status: 500,
+    } as const
+  }
+
+  // IPN notifications carry no x-signature/x-request-id and cannot be
+  // validated with the secret, so they are rejected here. Preferences set
+  // source_news=webhooks on notification_url so Mercado Pago sends only
+  // signed Webhooks; older preferences may still send IPN and get a 401.
+  if (!requestId || !signatureHeader) {
+    console.warn('Rejected unsigned Mercado Pago notification', {
+      dataId,
+      hasRequestId: Boolean(requestId),
+      hasSignature: Boolean(signatureHeader),
+      topic,
+    })
+    return {
+      processed: false,
+      reason: 'missing_signature',
+      status: 401,
     } as const
   }
 
@@ -324,9 +464,25 @@ export async function handleMercadoPagoWebhook(args: {
     } as const
   }
 
-  if (topic === 'payment') {
+  // From here on, permanent outcomes are acknowledged with 200: Mercado Pago
+  // retries any other status every 15 minutes. Transient failures (API or
+  // database errors) throw so the route answers 500 and Mercado Pago retries.
+  const resource = normalizeNotificationTopic(topic)
+
+  if (resource === 'payment') {
     const paymentClient = getPaymentClient()
-    const payment = await paymentClient.get({ id: Number(dataId) })
+    const payment = await getUnlessNotFound(paymentClient.get({ id: Number(dataId) }))
+
+    if (!payment) {
+      // e.g. the panel's "simulate notification" or a resource from another account.
+      console.warn('Mercado Pago payment from notification was not found', { dataId })
+      return {
+        processed: false,
+        reason: 'payment_not_found',
+        status: 200,
+      } as const
+    }
+
     const externalReference = payment.external_reference
 
     if (!externalReference) {
@@ -336,7 +492,7 @@ export async function handleMercadoPagoWebhook(args: {
       return {
         processed: false,
         reason: 'missing_external_reference',
-        status: 422,
+        status: 200,
       } as const
     }
 
@@ -353,6 +509,7 @@ export async function handleMercadoPagoWebhook(args: {
     const order = orderResult.docs[0] ?? null
 
     if (!order) {
+      // Likely a payment from another integration on the same account.
       console.warn('Mercado Pago payment notification did not match local order', {
         externalReference,
         paymentId: payment.id,
@@ -360,26 +517,41 @@ export async function handleMercadoPagoWebhook(args: {
       return {
         processed: false,
         reason: 'order_not_found',
-        status: 500,
+        status: 200,
       } as const
     }
 
-    await applyPaymentStateToOrder({ order, payment })
+    await applyPaymentStateToOrder({ notifyOnMismatch: true, order, payment })
     return { processed: true } as const
   }
 
-  if (topic === 'merchant_order') {
+  if (resource === 'merchant_order') {
     const merchantOrderClient = getMerchantOrderClient()
-    const merchantOrder = await merchantOrderClient.get({
-      merchantOrderId: Number(dataId),
-    })
+    const merchantOrder = await getUnlessNotFound(
+      merchantOrderClient.get({
+        merchantOrderId: Number(dataId),
+      }),
+    )
+
+    if (!merchantOrder) {
+      console.warn('Mercado Pago merchant order from notification was not found', { dataId })
+      return {
+        processed: false,
+        reason: 'merchant_order_not_found',
+        status: 200,
+      } as const
+    }
+
     const externalReference = merchantOrder.external_reference
 
     if (!externalReference) {
+      console.warn('Mercado Pago merchant order notification without external reference', {
+        merchantOrderId: merchantOrder.id,
+      })
       return {
         processed: false,
         reason: 'missing_external_reference',
-        status: 422,
+        status: 200,
       } as const
     }
 
@@ -397,22 +569,29 @@ export async function handleMercadoPagoWebhook(args: {
     const latestPayment = getLatestMerchantOrderPayment(merchantOrder)
 
     if (!order || !latestPayment?.id) {
+      const reason = !order ? 'order_not_found' : 'missing_latest_payment'
+      console.warn('Ignoring Mercado Pago merchant order notification', {
+        externalReference,
+        merchantOrderId: merchantOrder.id,
+        reason,
+      })
       return {
         processed: false,
-        reason: !order ? 'order_not_found' : 'missing_latest_payment',
-        status: !order ? 500 : 422,
+        reason,
+        status: 200,
       } as const
     }
 
     const paymentClient = getPaymentClient()
     const payment = await paymentClient.get({ id: latestPayment.id })
-    await applyPaymentStateToOrder({ order, payment })
+    await applyPaymentStateToOrder({ notifyOnMismatch: true, order, payment })
     return { processed: true } as const
   }
 
+  console.info('Ignoring Mercado Pago notification with unsupported topic', { dataId, topic })
   return {
     processed: false,
     reason: 'unsupported_topic',
-    status: 400,
+    status: 200,
   } as const
 }

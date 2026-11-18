@@ -152,6 +152,28 @@ export function splitCustomerName(fullName: string) {
   }
 }
 
+const ARGENTINA_COUNTRY_CODE = '54'
+const ARGENTINA_NATIONAL_NUMBER_LENGTH = 10
+
+/**
+ * Normalizes an Argentine phone number to its national form (area code +
+ * subscriber number, without the country code, the mobile "9" or the trunk
+ * "0"). Area codes vary between 2 and 4 digits, so the result is not split.
+ */
+export function normalizeArgentinePhoneNumber(phone: string) {
+  let digits = phone.replace(/\D/g, '')
+
+  if (digits.startsWith(ARGENTINA_COUNTRY_CODE) && digits.length > ARGENTINA_NATIONAL_NUMBER_LENGTH + 1) {
+    digits = digits.slice(ARGENTINA_COUNTRY_CODE.length)
+  }
+
+  if (digits.startsWith('9') && digits.length === ARGENTINA_NATIONAL_NUMBER_LENGTH + 1) {
+    digits = digits.slice(1)
+  }
+
+  return digits.replace(/^0+/, '')
+}
+
 export function getMercadoPagoInitPoint(preference: PreferenceResponse) {
   if (process.env.NODE_ENV !== 'production' && preference.sandbox_init_point) {
     return preference.sandbox_init_point
@@ -171,6 +193,10 @@ export function buildPreferenceRequest(input: {
   statementDescriptor?: string
 }) {
   const base = input.publicBaseUrl.replace(/\/$/, '')
+  // IPN notifications cannot be validated with the webhook secret, so ask
+  // Mercado Pago to send only signed Webhooks for this preference.
+  const notificationUrl = new URL(input.notificationUrl)
+  notificationUrl.searchParams.set('source_news', 'webhooks')
 
   return {
     auto_return: 'approved',
@@ -182,7 +208,7 @@ export function buildPreferenceRequest(input: {
     external_reference: input.externalReference,
     items: input.items,
     metadata: input.metadata,
-    notification_url: input.notificationUrl,
+    notification_url: notificationUrl.toString(),
     payer: input.payer,
     statement_descriptor: input.statementDescriptor,
   } satisfies PreferenceRequest
@@ -226,6 +252,55 @@ export function mapMercadoPagoPayment(payment: PaymentResponse): MercadoPagoReso
   }
 }
 
+// Orders.currency is required with this default; used only if a legacy order lacks it.
+const DEFAULT_ORDER_CURRENCY = 'ARS'
+
+export type MercadoPagoPaymentMatchOrder = {
+  currency?: string | null
+  externalReference?: string | null
+  paymentProvider?: string | null
+  total: number
+}
+
+function toCents(amount: number) {
+  return Math.round(amount * 100)
+}
+
+/**
+ * Returns the reason a Mercado Pago payment must not be applied to an order,
+ * or null when the payment belongs to it. Payment ids reach the server from
+ * untrusted query strings, so a payment for another (cheaper) order must never
+ * settle this one.
+ */
+export function getPaymentOrderMismatch(
+  order: MercadoPagoPaymentMatchOrder,
+  payment: Pick<PaymentResponse, 'currency_id' | 'external_reference' | 'transaction_amount'>,
+): string | null {
+  if (order.paymentProvider !== 'mercadopago') {
+    return 'order_not_mercadopago'
+  }
+
+  if (!order.externalReference || payment.external_reference !== order.externalReference) {
+    return 'external_reference_mismatch'
+  }
+
+  if (
+    typeof payment.transaction_amount !== 'number' ||
+    !Number.isFinite(payment.transaction_amount) ||
+    toCents(payment.transaction_amount) !== toCents(order.total)
+  ) {
+    return 'amount_mismatch'
+  }
+
+  const expectedCurrency = order.currency || DEFAULT_ORDER_CURRENCY
+
+  if (payment.currency_id !== expectedCurrency) {
+    return 'currency_mismatch'
+  }
+
+  return null
+}
+
 export function getLatestMerchantOrderPayment(merchantOrder: MerchantOrderResponse) {
   const payments = merchantOrder.payments?.filter((payment) => typeof payment.id === 'number') ?? []
   const sorted = payments.sort((left, right) => {
@@ -242,6 +317,24 @@ export function getNotificationDataId(requestUrl: URL) {
   return requestUrl.searchParams.get('data.id') ?? requestUrl.searchParams.get('id')
 }
 
+const MERCHANT_ORDER_TOPICS = new Set(['merchant_order', 'topic_merchant_order_wh'])
+
+/**
+ * Maps the notification topic to the resource it refers to. Webhooks send
+ * "topic_merchant_order_wh" while IPN uses "merchant_order".
+ */
+export function normalizeNotificationTopic(topic: string) {
+  if (topic === 'payment') {
+    return 'payment' as const
+  }
+
+  if (MERCHANT_ORDER_TOPICS.has(topic)) {
+    return 'merchant_order' as const
+  }
+
+  return null
+}
+
 export function getNotificationType(requestUrl: URL, body: unknown) {
   if (
     body &&
@@ -256,13 +349,22 @@ export function getNotificationType(requestUrl: URL, body: unknown) {
   return requestUrl.searchParams.get('type') ?? requestUrl.searchParams.get('topic')
 }
 
+/**
+ * Returns a Mercado Pago numeric id, or null when it is absent. Return URLs
+ * carry the literal "null" when the buyer leaves the checkout without paying.
+ */
+export function parseMercadoPagoId(value: string | null | undefined) {
+  const trimmed = value?.trim()
+  return trimmed && /^\d+$/.test(trimmed) ? trimmed : null
+}
+
 export function parseMercadoPagoStatusQuery(searchParams: URLSearchParams): MercadoPagoStatusQuery {
   return {
-    collectionId: searchParams.get('collection_id'),
+    collectionId: parseMercadoPagoId(searchParams.get('collection_id')),
     collectionStatus: searchParams.get('collection_status'),
     externalReference: searchParams.get('external_reference'),
-    merchantOrderId: searchParams.get('merchant_order_id'),
-    paymentId: searchParams.get('payment_id'),
+    merchantOrderId: parseMercadoPagoId(searchParams.get('merchant_order_id')),
+    paymentId: parseMercadoPagoId(searchParams.get('payment_id')),
     preferenceId: searchParams.get('preference_id'),
     status: searchParams.get('status'),
   }

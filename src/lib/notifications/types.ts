@@ -1,6 +1,7 @@
 export type AdminAlert = {
   message: string
   orderId: number
+  subject?: string
 }
 
 export type AlertResult = {
