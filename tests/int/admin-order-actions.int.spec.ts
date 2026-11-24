@@ -120,7 +120,7 @@ describe('order admin endpoints', () => {
     findByID.mockReset()
     update.mockReset()
     findByID.mockResolvedValue(buildOrder())
-    update.mockImplementation(async ({ data }) => ({ id: 7, ...data }))
+    update.mockImplementation(async ({ data }) => ({ docs: [{ id: 7, ...data }], errors: [] }))
   })
 
   it('rejects anonymous and non-admin users', async () => {
@@ -138,8 +138,41 @@ describe('order admin endpoints', () => {
 
     expect(response.status).toBe(200)
     expect(update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { paymentStatus: 'cancelled', status: 'cancelled' }, id: 7 }),
+      expect.objectContaining({
+        data: { paymentStatus: 'cancelled', status: 'cancelled' },
+        where: {
+          and: [
+            { id: { equals: 7 } },
+            { status: { equals: 'pending_whatsapp' } },
+            { paymentProvider: { equals: 'whatsapp' } },
+          ],
+        },
+      }),
     )
+  })
+
+  it('answers 409 when the order changed status after it was read', async () => {
+    // The order still looked pending when read, but another admin confirmed it before the write.
+    update.mockResolvedValue({ docs: [], errors: [] })
+
+    const cancelResponse = await cancelOrderEndpoint.handler(buildRequest({ role: 'admin' }))
+    const switchResponse = await switchOrderPaymentMethodEndpoint.handler(
+      buildRequest({ role: 'admin' }, { paymentMethod: 'transfer' }),
+    )
+
+    expect(cancelResponse.status).toBe(409)
+    expect(switchResponse.status).toBe(409)
+  })
+
+  it('never writes stock fields when cancelling or switching', async () => {
+    await cancelOrderEndpoint.handler(buildRequest({ role: 'admin' }))
+    await switchOrderPaymentMethodEndpoint.handler(buildRequest({ role: 'admin' }, { paymentMethod: 'transfer' }))
+
+    for (const [args] of update.mock.calls) {
+      expect(args.collection).toBe('orders')
+      expect(args.data).not.toHaveProperty('stockApplied')
+      expect(args.data.status ?? 'cancelled').not.toBe('confirmed')
+    }
   })
 
   it('answers 409 and does not update a cancelled order', async () => {

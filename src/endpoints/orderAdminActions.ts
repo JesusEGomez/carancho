@@ -44,13 +44,26 @@ function orderAction(buildUpdate: OrderUpdate): Endpoint['handler'] {
 
     try {
       const data = await buildUpdate(order as AdminActionOrder, req)
-      const updated = await req.payload.update({
+      // Conditional write: if another admin finalized or cancelled the order after it was
+      // read, nothing matches and the stale action is rejected instead of overwriting it.
+      const result = await req.payload.update({
         collection: 'orders',
         data,
         depth: 1,
-        id,
         req,
+        where: {
+          and: [
+            { id: { equals: id } },
+            { status: { equals: 'pending_whatsapp' } },
+            { paymentProvider: { equals: 'whatsapp' } },
+          ],
+        },
       })
+      const updated = result.docs[0]
+
+      if (!updated) {
+        return errorResponse('La orden cambió de estado mientras se procesaba. Recargá e intentá de nuevo.', 409)
+      }
 
       return Response.json(updated)
     } catch (error) {
