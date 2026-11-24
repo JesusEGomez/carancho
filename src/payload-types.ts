@@ -201,6 +201,8 @@ export interface Product {
   shortDescription: string;
   description: string;
   price: number;
+  transferPrice?: number | null;
+  cardPrice?: number | null;
   compareAtPrice?: number | null;
   stock: number;
   isFeatured?: boolean | null;
@@ -435,6 +437,8 @@ export interface ProductsSelect<T extends boolean = true> {
   shortDescription?: T;
   description?: T;
   price?: T;
+  transferPrice?: T;
+  cardPrice?: T;
   compareAtPrice?: T;
   stock?: T;
   isFeatured?: T;

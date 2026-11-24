@@ -39,6 +39,7 @@ export default function EditProductPage({ params }: Props) {
 
   const initialData: ProductFormData = {
     badges: product.badges ?? [],
+    cardPrice: product.cardPrice ?? '',
     compareAtPrice: product.compareAtPrice ?? '',
     description: product.description,
     featuredImage,
@@ -57,6 +58,7 @@ export default function EditProductPage({ params }: Props) {
     status: product.status,
     stock: product.stock,
     subcategoryId,
+    transferPrice: product.transferPrice ?? '',
   }
 
   return <ProductForm initialData={initialData} key={product.id} />

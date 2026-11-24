@@ -1,9 +1,13 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, NumberFieldSingleValidation } from 'payload'
 
 import { isAdmin } from '@/access/isAdmin'
 import { createUniqueSlugHook } from '@/hooks/createUniqueSlugHook'
 import { revalidateProductRoutes } from '@/hooks/revalidateStorefront'
 import { publishedOrAdmin } from '@/access/publishedOrAdmin'
+import { validateAlternativePrice } from '@/lib/pricing'
+
+const validateAgainstCashPrice: NumberFieldSingleValidation = (value, { siblingData }) =>
+  validateAlternativePrice(value, (siblingData as { price?: number } | undefined)?.price)
 
 export const Products: CollectionConfig = {
   slug: 'products',
@@ -80,8 +84,23 @@ export const Products: CollectionConfig = {
     {
       name: 'price',
       type: 'number',
+      label: 'Precio efectivo',
       required: true,
       min: 0,
+    },
+    {
+      name: 'transferPrice',
+      type: 'number',
+      label: 'Precio transferencia',
+      min: 0,
+      validate: validateAgainstCashPrice,
+    },
+    {
+      name: 'cardPrice',
+      type: 'number',
+      label: 'Precio tarjeta',
+      min: 0,
+      validate: validateAgainstCashPrice,
     },
     {
       name: 'compareAtPrice',

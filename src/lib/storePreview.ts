@@ -43,6 +43,8 @@ const product = (input: {
   description: string
   price: number
   compareAtPrice?: number
+  transferPrice?: number
+  cardPrice?: number
   stock: number
   category: PreviewCategory
   badge?: 'nuevo' | 'oferta' | 'destacado'
@@ -59,6 +61,8 @@ const product = (input: {
     description: input.description,
     price: input.price,
     compareAtPrice: input.compareAtPrice ?? null,
+    transferPrice: input.transferPrice ?? null,
+    cardPrice: input.cardPrice ?? null,
     stock: input.stock,
     status: 'published',
     badges: input.badge ? [input.badge] : [],
@@ -95,6 +99,8 @@ export const previewProducts = [
     description:
       'Combo armado para quienes necesitan una solucion inmediata, balanceada y lista para salir al agua con una estetica mas comercial.',
     price: 45900,
+    transferPrice: 47900,
+    cardPrice: 52900,
     stock: 12,
     category: rodsCategory,
     badge: 'nuevo',
@@ -115,6 +121,7 @@ export const previewProducts = [
     description:
       'Un kit visualmente fuerte para exhibicion y venta rapida, pensado para rotacion alta en catalogo y home.',
     price: 12500,
+    cardPrice: 14500,
     stock: 8,
     category: luresCategory,
     badge: 'oferta',

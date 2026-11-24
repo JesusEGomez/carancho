@@ -27,6 +27,8 @@ export type ProductRecord = {
   shortDescription: string
   description: string
   price: number
+  transferPrice?: number | null
+  cardPrice?: number | null
   compareAtPrice?: number | null
   stock: number
   status: 'published' | 'draft'

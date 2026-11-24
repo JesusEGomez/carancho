@@ -33,13 +33,14 @@ const specificationSchema = z.object({
 const productFormSchema = z
   .object({
     badges: z.array(z.enum(['nuevo', 'oferta', 'destacado'])).default([]),
+    cardPrice: z.union([z.literal(''), z.coerce.number().min(0, 'El precio tarjeta debe ser positivo')]),
     compareAtPrice: z.union([z.literal(''), z.coerce.number().min(0, 'El precio comparado debe ser positivo')]),
     description: z.string().trim().min(10, 'La descripción debe tener al menos 10 caracteres'),
     features: z.array(featureSchema).default([]),
     isFeatured: z.boolean().default(false),
     name: z.string().trim().min(3, 'El nombre debe tener al menos 3 caracteres'),
     parentCategoryId: z.coerce.number().min(1, 'Selecciona una categoría'),
-    price: z.coerce.number().min(0, 'El precio debe ser mayor o igual a 0'),
+    price: z.coerce.number().min(0, 'El precio efectivo debe ser mayor o igual a 0'),
     shortDescription: z.string().trim().min(10, 'La descripción corta debe tener al menos 10 caracteres'),
     showFeatures: z.boolean().default(false),
     showSpecifications: z.boolean().default(false),
@@ -47,6 +48,7 @@ const productFormSchema = z
     status: z.enum(['published', 'draft']),
     stock: z.coerce.number().min(0, 'El stock debe ser mayor o igual a 0'),
     subcategoryId: z.coerce.number().min(0),
+    transferPrice: z.union([z.literal(''), z.coerce.number().min(0, 'El precio transferencia debe ser positivo')]),
   })
   .superRefine((values, context) => {
     if (values.compareAtPrice !== '' && Number(values.compareAtPrice) < values.price) {
@@ -55,6 +57,16 @@ const productFormSchema = z
         message: 'El precio comparado no puede ser menor al precio actual',
         path: ['compareAtPrice'],
       })
+    }
+
+    for (const field of ['transferPrice', 'cardPrice'] as const) {
+      if (values[field] !== '' && Number(values[field]) < values.price) {
+        context.addIssue({
+          code: 'custom',
+          message: 'No puede ser menor al precio efectivo',
+          path: [field],
+        })
+      }
     }
 
   })
@@ -79,6 +91,7 @@ type UploadErrors = {
 
 const defaultValues: ProductFormData = {
   badges: [],
+  cardPrice: '',
   compareAtPrice: '',
   description: '',
   featuredImage: null,
@@ -95,6 +108,11 @@ const defaultValues: ProductFormData = {
   status: 'published',
   stock: 0,
   subcategoryId: 0,
+  transferPrice: '',
+}
+
+function toOptionalPrice(value: number | '' | undefined) {
+  return value === '' || value === undefined ? null : Number(value)
 }
 
 function validateImageFile(file: File) {
@@ -236,6 +254,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
               id: initialData?.id ? String(initialData.id) : null,
               payload: {
                 badges: values.badges,
+                cardPrice: toOptionalPrice(values.cardPrice),
                 category: values.subcategoryId || values.parentCategoryId,
                 compareAtPrice:
                   values.compareAtPrice === '' || values.compareAtPrice === undefined
@@ -256,6 +275,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 })),
                 status: values.status,
                 stock: values.stock,
+                transferPrice: toOptionalPrice(values.transferPrice),
               },
             })
             .then(() => {
@@ -323,8 +343,16 @@ export function ProductForm({ initialData }: ProductFormProps) {
             </AdminSelect>
           </AdminField>
 
-          <AdminField error={errors.price?.message} label="Precio" required>
+          <AdminField error={errors.price?.message} label="Precio efectivo" required>
             <AdminInput min={0} type="number" {...register('price')} />
+          </AdminField>
+
+          <AdminField error={errors.transferPrice?.message} label="Precio transferencia (opcional)">
+            <AdminInput min={0} type="number" {...register('transferPrice')} />
+          </AdminField>
+
+          <AdminField error={errors.cardPrice?.message} label="Precio tarjeta (opcional)">
+            <AdminInput min={0} type="number" {...register('cardPrice')} />
           </AdminField>
 
           <AdminField error={errors.compareAtPrice?.message} label="Precio comparado">
