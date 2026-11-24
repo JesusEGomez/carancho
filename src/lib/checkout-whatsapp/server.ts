@@ -3,12 +3,12 @@ import 'server-only'
 import { buildWhatsAppCheckoutMessage, createWhatsAppUrl } from '@/lib/alerts/whatsapp'
 import { buildValidatedOrderData } from '@/lib/checkout'
 import { createWhatsAppUnavailableError } from '@/lib/checkout-errors'
-import type { CreateOrderRequest, CreateWhatsAppOrderResponse } from '@/lib/checkout-schema'
+import type { CreateWhatsAppOrderRequest, CreateWhatsAppOrderResponse } from '@/lib/checkout-schema'
 import { getPayloadClient } from '@/lib/payload'
 
-export async function createWhatsAppCheckout(input: CreateOrderRequest): Promise<CreateWhatsAppOrderResponse> {
+export async function createWhatsAppCheckout(input: CreateWhatsAppOrderRequest): Promise<CreateWhatsAppOrderResponse> {
   const payload = await getPayloadClient()
-  const orderData = await buildValidatedOrderData(input)
+  const orderData = await buildValidatedOrderData(input, input.paymentMethod)
   const contacts = await payload.find({
     collection: 'store-contacts',
     depth: 0,

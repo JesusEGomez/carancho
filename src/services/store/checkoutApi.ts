@@ -5,6 +5,7 @@ import type {
   CheckoutStatusResponse,
   CreateOrderRequest,
   CreateOrderResponse,
+  CreateWhatsAppOrderRequest,
   CreateWhatsAppOrderResponse,
 } from '@/lib/checkout-schema'
 import type { MercadoPagoStatusQuery } from '@/lib/mercadopago/shared'
@@ -14,7 +15,7 @@ export async function createOrder(payload: CreateOrderRequest) {
   return response.data
 }
 
-export async function createWhatsAppOrder(payload: CreateOrderRequest) {
+export async function createWhatsAppOrder(payload: CreateWhatsAppOrderRequest) {
   const response = await api.post<CreateWhatsAppOrderResponse>('/checkout/create-whatsapp', payload)
   return response.data
 }

@@ -24,10 +24,13 @@ describe('WhatsApp alerts', () => {
           unitPrice: 10000,
         },
       ],
+      paymentMethod: 'transfer',
       total: 20000,
     })
 
     expect(message).toContain('Pedido #42')
+    expect(message).toContain('Medio de pago: Transferencia')
+    expect(message).toContain('Total: $20.000')
     expect(message).toContain('Ana Perez')
     expect(message).toContain('Buenos Aires')
     expect(message).toContain('Combo Waterdog')

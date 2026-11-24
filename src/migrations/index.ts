@@ -10,6 +10,7 @@ import * as migration_20260417_181000_whatsapp_orders_channel from './20260417_1
 import * as migration_20260430_111500_category_store_visibility from './20260430_111500_category_store_visibility';
 import * as migration_20260516_151500_store_contact_instagram_url from './20260516_151500_store_contact_instagram_url';
 import * as migration_20261124_120000_product_payment_prices from './20261124_120000_product_payment_prices';
+import * as migration_20261124_121000_order_payment_method from './20261124_121000_order_payment_method';
 
 export const migrations = [
   {
@@ -71,5 +72,10 @@ export const migrations = [
     up: migration_20261124_120000_product_payment_prices.up,
     down: migration_20261124_120000_product_payment_prices.down,
     name: '20261124_120000_product_payment_prices'
+  },
+  {
+    up: migration_20261124_121000_order_payment_method.up,
+    down: migration_20261124_121000_order_payment_method.down,
+    name: '20261124_121000_order_payment_method'
   },
 ];

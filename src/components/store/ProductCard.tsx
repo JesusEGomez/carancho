@@ -74,8 +74,10 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
             featuredImageUrl: image?.url,
             id: product.id,
             name: product.name,
+            cardPrice: product.cardPrice,
             price: product.price,
             slug: product.slug,
+            transferPrice: product.transferPrice,
             stock: product.stock,
           }}
         />

@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
-import type { CartLine, CartProductSnapshot } from '@/lib/cart'
+import { getCartTotals, type CartLine, type CartProductSnapshot } from '@/lib/cart'
+import type { PaymentMethod } from '@/lib/pricing'
 import { useToast } from '@/providers/ToastProvider'
 
 const STORAGE_KEY = 'carancho-store-cart'
@@ -14,7 +15,9 @@ type CartContextValue = {
   items: CartLine[]
   removeItem: (productId: number) => void
   setQuantity: (productId: number, quantity: number) => void
+  /** Cash subtotal. */
   subtotal: number
+  totals: Record<PaymentMethod, number>
 }
 
 const CartContext = createContext<CartContextValue | null>(null)
@@ -180,7 +183,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
 
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
-    const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
+    const totals = getCartTotals(items)
+    const subtotal = totals.cash
 
     return {
       addItem,
@@ -190,6 +194,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeItem,
       setQuantity,
       subtotal,
+      totals,
     }
   }, [items, showToast])
 

@@ -188,8 +188,10 @@ export default async function ProductDetailPage({ params }: Props) {
                 featuredImageUrl: product.featuredImage?.url,
                 id: product.id,
                 name: product.name,
+                cardPrice: product.cardPrice,
                 price: product.price,
                 slug: product.slug,
+                transferPrice: product.transferPrice,
                 stock: product.stock,
               }}
             />

@@ -134,6 +134,24 @@ export const Orders: CollectionConfig = {
       ],
     },
     {
+      name: 'paymentMethod',
+      type: 'select',
+      options: [
+        {
+          label: 'Efectivo',
+          value: 'cash',
+        },
+        {
+          label: 'Transferencia',
+          value: 'transfer',
+        },
+        {
+          label: 'Tarjeta',
+          value: 'card',
+        },
+      ],
+    },
+    {
       name: 'paymentStatus',
       type: 'select',
       options: [
@@ -211,6 +229,16 @@ export const Orders: CollectionConfig = {
           name: 'unitPrice',
           type: 'number',
           required: true,
+          min: 0,
+        },
+        {
+          name: 'cashUnitPrice',
+          type: 'number',
+          min: 0,
+        },
+        {
+          name: 'transferUnitPrice',
+          type: 'number',
           min: 0,
         },
         {
