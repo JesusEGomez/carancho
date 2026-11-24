@@ -13,6 +13,15 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     ALTER TABLE "orders_items"
       ADD COLUMN IF NOT EXISTS "cash_unit_price" numeric,
       ADD COLUMN IF NOT EXISTS "transfer_unit_price" numeric;
+
+    -- Orders created before per-method prices were charged the cash price, so it is
+    -- the only snapshot available for both methods.
+    UPDATE "orders_items" SET "cash_unit_price" = "unit_price" WHERE "cash_unit_price" IS NULL;
+    UPDATE "orders_items" SET "transfer_unit_price" = "unit_price" WHERE "transfer_unit_price" IS NULL;
+    UPDATE "orders" SET "payment_method" = 'cash'
+      WHERE "payment_method" IS NULL AND "payment_provider" = 'whatsapp';
+    UPDATE "orders" SET "payment_method" = 'card'
+      WHERE "payment_method" IS NULL AND "payment_provider" = 'mercadopago';
   `)
 }
 

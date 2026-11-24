@@ -49,6 +49,14 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
 
   const isPendingWhatsApp = order?.status === 'pending_whatsapp' && order.paymentProvider === 'whatsapp'
   const canFinalizeOrder = order?.status === 'pending_whatsapp'
+  // Defensive: orders without a recorded method or per-method snapshots cannot be repriced.
+  const canSwitchPaymentMethod =
+    isPendingWhatsApp &&
+    (order.paymentMethod === 'cash' || order.paymentMethod === 'transfer') &&
+    Boolean(order.items?.length) &&
+    (order.items ?? []).every(
+      (item) => typeof item.cashUnitPrice === 'number' && typeof item.transferUnitPrice === 'number',
+    )
   const isMutating = updateOrderStatus.isPending || updatePaymentMethod.isPending || cancelOrder.isPending
   const paymentMethodLabel = order?.paymentMethod ? PAYMENT_METHOD_LABELS[order.paymentMethod] : '-'
   const nextPaymentMethod = order?.paymentMethod === 'transfer' ? 'cash' : 'transfer'
@@ -113,7 +121,7 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
             <p className="mt-2 text-sm text-slate-500">{order.customerEmail}</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            {isPendingWhatsApp ? (
+            {canSwitchPaymentMethod ? (
               <button
                 className="rounded-full border border-brand-orange px-5 py-3 text-sm font-black text-brand-orange disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={isMutating}
