@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { createWhatsAppCheckout } from '@/lib/checkout-whatsapp/server'
 import { CheckoutDomainError } from '@/lib/checkout-errors'
-import { createOrderRequestSchema, type CreateWhatsAppOrderResponse } from '@/lib/checkout-schema'
+import { createWhatsAppOrderRequestSchema, type CreateWhatsAppOrderResponse } from '@/lib/checkout-schema'
 
 export async function POST(request: Request) {
   let body: unknown
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const parsed = createOrderRequestSchema.safeParse(body)
+  const parsed = createWhatsAppOrderRequestSchema.safeParse(body)
 
   if (!parsed.success) {
     return NextResponse.json(

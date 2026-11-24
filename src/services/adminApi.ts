@@ -27,10 +27,13 @@ export type ProductRecord = {
   shortDescription: string
   description: string
   price: number
+  transferPrice?: number | null
+  cardPrice?: number | null
   compareAtPrice?: number | null
   stock: number
   status: 'published' | 'draft'
   isFeatured: boolean
+  showInOffers?: boolean | null
   showFeatures?: boolean | null
   showSpecifications?: boolean | null
   badges?: ('nuevo' | 'oferta' | 'destacado')[] | null
@@ -66,6 +69,8 @@ export type OrderItemRecord = {
   productSlug: string
   quantity: number
   unitPrice: number
+  cashUnitPrice?: number | null
+  transferUnitPrice?: number | null
   lineTotal: number
 }
 
@@ -82,6 +87,7 @@ export type OrderRecord = {
   deliveryAddress: string
   deliveryNotes?: string | null
   confirmationToken: string
+  paymentMethod?: 'cash' | 'transfer' | 'card' | null
   paymentProvider?: 'mercadopago' | 'whatsapp' | null
   paymentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'refunded' | 'charged_back' | null
   externalReference?: string | null
@@ -208,5 +214,21 @@ export async function saveOrderStatus({
   }
 
   const response = await api.patch<OrderRecord>(`/orders/${id}`, payload)
+  return response.data
+}
+
+export async function saveOrderPaymentMethod({
+  id,
+  paymentMethod,
+}: {
+  id: string
+  paymentMethod: 'cash' | 'transfer'
+}) {
+  const response = await api.patch<OrderRecord>(`/orders/${id}/payment-method`, { paymentMethod })
+  return response.data
+}
+
+export async function cancelOrder({ id }: { id: string }) {
+  const response = await api.post<OrderRecord>(`/orders/${id}/cancel`)
   return response.data
 }

@@ -2,7 +2,14 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { fetchOrder, fetchOrders, saveOrderStatus, type OrderRecord } from '@/services/adminApi'
+import {
+  cancelOrder,
+  fetchOrder,
+  fetchOrders,
+  saveOrderPaymentMethod,
+  saveOrderStatus,
+  type OrderRecord,
+} from '@/services/adminApi'
 
 export const ORDERS_QUERY_KEY = ['admin-orders']
 
@@ -22,7 +29,7 @@ export function useOrder(id: string) {
 }
 
 export function useUpdateOrderStatus() {
-  const queryClient = useQueryClient()
+  const storeUpdatedOrder = useStoreUpdatedOrder()
 
   return useMutation<
     OrderRecord,
@@ -34,10 +41,34 @@ export function useUpdateOrderStatus() {
     }
   >({
     mutationFn: saveOrderStatus,
-    onSuccess: (data, variables) => {
-      queryClient.setQueryData<OrderRecord | undefined>([...ORDERS_QUERY_KEY, variables.id], data)
-      void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
-      void queryClient.invalidateQueries({ queryKey: [...ORDERS_QUERY_KEY, variables.id] })
-    },
+    onSuccess: storeUpdatedOrder,
   })
+}
+
+export function useUpdateOrderPaymentMethod() {
+  const storeUpdatedOrder = useStoreUpdatedOrder()
+
+  return useMutation<OrderRecord, Error, { id: string; paymentMethod: 'cash' | 'transfer' }>({
+    mutationFn: saveOrderPaymentMethod,
+    onSuccess: storeUpdatedOrder,
+  })
+}
+
+export function useCancelOrder() {
+  const storeUpdatedOrder = useStoreUpdatedOrder()
+
+  return useMutation<OrderRecord, Error, { id: string }>({
+    mutationFn: cancelOrder,
+    onSuccess: storeUpdatedOrder,
+  })
+}
+
+function useStoreUpdatedOrder() {
+  const queryClient = useQueryClient()
+
+  return (data: OrderRecord, variables: { id: string }) => {
+    queryClient.setQueryData<OrderRecord | undefined>([...ORDERS_QUERY_KEY, variables.id], data)
+    void queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
+    void queryClient.invalidateQueries({ queryKey: [...ORDERS_QUERY_KEY, variables.id] })
+  }
 }

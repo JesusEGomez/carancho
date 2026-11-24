@@ -3,10 +3,11 @@
 import Link from 'next/link'
 
 import { formatCurrency } from '@/lib/formatCurrency'
-import { useCart } from '@/providers/CartProvider'
+import { useCart, useRefreshCartPrices } from '@/providers/CartProvider'
 
 export function CartPageClient() {
-  const { itemCount, items, removeItem, setQuantity, subtotal } = useCart()
+  const { itemCount, items, removeItem, setQuantity, subtotal, totals } = useCart()
+  useRefreshCartPrices()
 
   if (!items.length) {
     return (
@@ -85,9 +86,21 @@ export function CartPageClient() {
           <span className="font-bold text-brand-ink">A coordinar</span>
         </div>
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-6 text-base font-black text-brand-ink">
-          <span>Total</span>
+          <span>{totals.transfer !== subtotal || totals.card !== subtotal ? 'Total en efectivo' : 'Total'}</span>
           <span>{formatCurrency(subtotal)}</span>
         </div>
+        {totals.transfer !== subtotal ? (
+          <div className="mt-2 flex items-center justify-between text-sm text-slate-500">
+            <span>Por transferencia</span>
+            <span className="font-bold text-brand-ink">{formatCurrency(totals.transfer)}</span>
+          </div>
+        ) : null}
+        {totals.card !== subtotal ? (
+          <div className="mt-2 flex items-center justify-between text-sm text-slate-500">
+            <span>Con tarjeta (Mercado Pago)</span>
+            <span className="font-bold text-brand-ink">{formatCurrency(totals.card)}</span>
+          </div>
+        ) : null}
 
         <Link className="orange-button btn-press mt-6 flex justify-center" href="/checkout">
           Continuar al checkout

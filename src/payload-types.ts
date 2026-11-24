@@ -201,9 +201,12 @@ export interface Product {
   shortDescription: string;
   description: string;
   price: number;
+  transferPrice?: number | null;
+  cardPrice?: number | null;
   compareAtPrice?: number | null;
   stock: number;
   isFeatured?: boolean | null;
+  showInOffers?: boolean | null;
   badges?: ('nuevo' | 'oferta' | 'destacado')[] | null;
   featuredImage: number | Media;
   gallery?: (number | Media)[] | null;
@@ -258,6 +261,7 @@ export interface Order {
   confirmationToken: string;
   stockApplied?: boolean | null;
   paymentProvider?: ('mercadopago' | 'whatsapp') | null;
+  paymentMethod?: ('cash' | 'transfer' | 'card') | null;
   paymentStatus?: ('pending' | 'approved' | 'rejected' | 'cancelled' | 'refunded' | 'charged_back') | null;
   externalReference?: string | null;
   providerPreferenceId?: string | null;
@@ -269,6 +273,8 @@ export interface Order {
     productSlug: string;
     quantity: number;
     unitPrice: number;
+    cashUnitPrice?: number | null;
+    transferUnitPrice?: number | null;
     lineTotal: number;
     id?: string | null;
   }[];
@@ -435,9 +441,12 @@ export interface ProductsSelect<T extends boolean = true> {
   shortDescription?: T;
   description?: T;
   price?: T;
+  transferPrice?: T;
+  cardPrice?: T;
   compareAtPrice?: T;
   stock?: T;
   isFeatured?: T;
+  showInOffers?: T;
   badges?: T;
   featuredImage?: T;
   gallery?: T;
@@ -490,6 +499,7 @@ export interface OrdersSelect<T extends boolean = true> {
   confirmationToken?: T;
   stockApplied?: T;
   paymentProvider?: T;
+  paymentMethod?: T;
   paymentStatus?: T;
   externalReference?: T;
   providerPreferenceId?: T;
@@ -503,6 +513,8 @@ export interface OrdersSelect<T extends boolean = true> {
         productSlug?: T;
         quantity?: T;
         unitPrice?: T;
+        cashUnitPrice?: T;
+        transferUnitPrice?: T;
         lineTotal?: T;
         id?: T;
       };

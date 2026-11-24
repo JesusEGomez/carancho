@@ -19,9 +19,19 @@ export const createOrderRequestSchema = z.object({
   items: z.array(cartItemSchema).min(1, 'El carrito no puede estar vacío'),
 })
 
+export const whatsAppPaymentMethodSchema = z.enum(['cash', 'transfer'], {
+  message: 'Elegí si pagás en efectivo o por transferencia',
+})
+
+export const createWhatsAppOrderRequestSchema = createOrderRequestSchema.extend({
+  paymentMethod: whatsAppPaymentMethodSchema,
+})
+
 export type CartItem = z.infer<typeof cartItemSchema>
 export type CheckoutFormData = z.infer<typeof checkoutFormSchema>
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>
+export type CreateWhatsAppOrderRequest = z.infer<typeof createWhatsAppOrderRequestSchema>
+export type WhatsAppPaymentMethod = z.infer<typeof whatsAppPaymentMethodSchema>
 export type CreateOrderResponse = {
   confirmationToken: string
   initPoint: string
@@ -53,6 +63,7 @@ export type CheckoutStatusResponse = {
     quantity: number
     unitPrice: number
   }[]
+  paymentMethod?: 'cash' | 'transfer' | 'card' | null
   paymentProvider?: 'mercadopago' | 'whatsapp' | null
   paymentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'refunded' | 'charged_back' | null
   providerPaymentId?: string | null

@@ -1,5 +1,10 @@
 import type { CartLine } from '@/lib/cart'
-import type { CheckoutFormData, CreateOrderRequest } from '@/lib/checkout-schema'
+import type {
+  CheckoutFormData,
+  CreateOrderRequest,
+  CreateWhatsAppOrderRequest,
+  WhatsAppPaymentMethod,
+} from '@/lib/checkout-schema'
 
 export function buildCreateOrderRequest(items: CartLine[], customer: CheckoutFormData): CreateOrderRequest {
   return {
@@ -8,6 +13,17 @@ export function buildCreateOrderRequest(items: CartLine[], customer: CheckoutFor
       productId: item.product.id,
       quantity: item.quantity,
     })),
+  }
+}
+
+export function buildCreateWhatsAppOrderRequest(
+  items: CartLine[],
+  customer: CheckoutFormData,
+  paymentMethod: WhatsAppPaymentMethod,
+): CreateWhatsAppOrderRequest {
+  return {
+    ...buildCreateOrderRequest(items, customer),
+    paymentMethod,
   }
 }
 

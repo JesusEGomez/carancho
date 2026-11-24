@@ -8,9 +8,10 @@ import { FloatingSocialButtons } from '@/components/store/FloatingSocialButtons'
 import { StoreBenefitsSection } from '@/components/store/StoreBenefitsSection'
 import { StoreFooter } from '@/components/store/StoreFooter'
 import { HeroCarousel } from '@/components/store/HeroCarousel'
+import { OffersCarousel } from '@/components/store/OffersCarousel'
 import { StoreHeader } from '@/components/store/StoreHeader'
 import { ProductCard } from '@/components/store/ProductCard'
-import { getFeaturedCategories, getFeaturedProducts } from '@/lib/store'
+import { getFeaturedCategories, getFeaturedProducts, getOfferProducts } from '@/lib/store'
 import { absoluteUrl, serializeJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
@@ -29,7 +30,11 @@ export default async function HomePage() {
   // revalidates it. `/productos` is already dynamic because it awaits searchParams.
   await connection()
 
-  const [categories, products] = await Promise.all([getFeaturedCategories(), getFeaturedProducts(4)])
+  const [categories, products, offerProducts] = await Promise.all([
+    getFeaturedCategories(),
+    getFeaturedProducts(4),
+    getOfferProducts(),
+  ])
   const organizationJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -60,7 +65,17 @@ export default async function HomePage() {
         </section>
       ) : null}
 
-      <section className={`bg-[#efebe5] pb-18 ${categories.length ? '' : 'pt-16 sm:pt-20'}`}>
+      {offerProducts.length ? (
+        <section id="ofertas" className={`bg-[#efebe5] pb-16 sm:pb-20 ${categories.length ? '' : 'pt-16 sm:pt-20'}`}>
+          <div className="container-shell">
+            <OffersCarousel products={offerProducts} />
+          </div>
+        </section>
+      ) : null}
+
+      <section
+        className={`bg-[#efebe5] pb-18 ${categories.length || offerProducts.length ? '' : 'pt-16 sm:pt-20'}`}
+      >
         <div className="container-shell">
           <div className="mb-8 flex items-end justify-between gap-5">
             <h2 className="text-[30px] font-black uppercase tracking-tight text-brand-ink sm:text-[34px]">Nuevos ingresos</h2>

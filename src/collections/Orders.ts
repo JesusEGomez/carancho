@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAdmin } from '@/access/isAdmin'
+import { cancelOrderEndpoint, switchOrderPaymentMethodEndpoint } from '@/endpoints/orderAdminActions'
 import { notifyAdminAfterOrderChange } from '@/hooks/orderNotificationHooks'
 import { syncOrderStockAfterChange, validateOrderStockBeforeChange } from '@/hooks/orderStockHooks'
 
@@ -16,6 +17,7 @@ export const Orders: CollectionConfig = {
     read: isAdmin,
     update: isAdmin,
   },
+  endpoints: [switchOrderPaymentMethodEndpoint, cancelOrderEndpoint],
   hooks: {
     afterChange: [syncOrderStockAfterChange, notifyAdminAfterOrderChange],
     beforeChange: [validateOrderStockBeforeChange],
@@ -134,6 +136,24 @@ export const Orders: CollectionConfig = {
       ],
     },
     {
+      name: 'paymentMethod',
+      type: 'select',
+      options: [
+        {
+          label: 'Efectivo',
+          value: 'cash',
+        },
+        {
+          label: 'Transferencia',
+          value: 'transfer',
+        },
+        {
+          label: 'Tarjeta',
+          value: 'card',
+        },
+      ],
+    },
+    {
       name: 'paymentStatus',
       type: 'select',
       options: [
@@ -211,6 +231,16 @@ export const Orders: CollectionConfig = {
           name: 'unitPrice',
           type: 'number',
           required: true,
+          min: 0,
+        },
+        {
+          name: 'cashUnitPrice',
+          type: 'number',
+          min: 0,
+        },
+        {
+          name: 'transferUnitPrice',
+          type: 'number',
           min: 0,
         },
         {

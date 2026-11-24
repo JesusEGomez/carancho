@@ -6,23 +6,29 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 
 import { createWhatsAppTabHandle, openWhatsAppLink, type WhatsAppTabHandle } from '@/lib/alerts/whatsapp-client'
-import { buildCreateOrderRequest, buildOrderConfirmationPath } from '@/lib/checkout-client'
+import {
+  buildCreateOrderRequest,
+  buildCreateWhatsAppOrderRequest,
+  buildOrderConfirmationPath,
+} from '@/lib/checkout-client'
 import { CHECKOUT_ERROR_CODES } from '@/lib/checkout-errors'
 import { createOrder, createWhatsAppOrder } from '@/services/store/checkoutApi'
-import { checkoutFormSchema, type CheckoutFormData } from '@/lib/checkout-schema'
+import { checkoutFormSchema, type CheckoutFormData, type WhatsAppPaymentMethod } from '@/lib/checkout-schema'
 import { formatCurrency } from '@/lib/formatCurrency'
-import { useCart } from '@/providers/CartProvider'
+import { useCart, useRefreshCartPrices } from '@/providers/CartProvider'
 import { useToast } from '@/providers/ToastProvider'
 import { ApiError } from '@/lib/client/api'
 
 export function CheckoutPageClient() {
   const router = useRouter()
-  const { clearCart, items, subtotal } = useCart()
+  const { clearCart, items, subtotal, totals } = useCart()
+  useRefreshCartPrices()
   const { showError } = useToast()
   const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0)
   const distinctProducts = items.length
   const [stockErrorProductName, setStockErrorProductName] = useState<string | null>(null)
   const [submitChannel, setSubmitChannel] = useState<'mercadopago' | 'whatsapp' | null>(null)
+  const [whatsAppPaymentMethod, setWhatsAppPaymentMethod] = useState<WhatsAppPaymentMethod>('cash')
   const pendingWhatsAppTabRef = useRef<WhatsAppTabHandle | null>(null)
   const {
     formState: { errors, isSubmitting, isValid },
@@ -52,6 +58,7 @@ export function CheckoutPageClient() {
     watchedValues.deliveryCity,
     watchedValues.deliveryAddress,
   ].every((value) => value?.trim())
+  const hasAlternativeTotals = totals.transfer !== subtotal || totals.card !== subtotal
   const checkoutActionsDisabled = isSubmitting || !requiredFieldsCompleted || !isValid
 
   if (!items.length) {
@@ -101,7 +108,9 @@ export function CheckoutPageClient() {
       setSubmitChannel('whatsapp')
       clearErrors('root')
       setStockErrorProductName(null)
-      const response = await createWhatsAppOrder(buildCreateOrderRequest(items, values))
+      const response = await createWhatsAppOrder(
+        buildCreateWhatsAppOrderRequest(items, values, whatsAppPaymentMethod),
+      )
       if (pendingWhatsAppTabRef.current) {
         pendingWhatsAppTabRef.current.redirect(response.whatsappUrl)
         pendingWhatsAppTabRef.current = null
@@ -186,26 +195,75 @@ export function CheckoutPageClient() {
             </p>
           ) : null}
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              className="rounded-full bg-brand-orange px-6 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-50"
-              disabled={checkoutActionsDisabled}
-              type="submit"
-            >
-              {isSubmitting && submitChannel === 'mercadopago' ? 'Redirigiendo al pago...' : 'Pagar con Mercado Pago'}
-            </button>
-            <button
-              className="rounded-full border border-brand-orange px-6 py-3 text-sm font-black text-brand-orange disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
-              disabled={checkoutActionsDisabled}
-              onClick={() => {
-                pendingWhatsAppTabRef.current?.close()
-                pendingWhatsAppTabRef.current = createWhatsAppTabHandle()
-                void onWhatsAppSubmit()
-              }}
-              type="button"
-            >
-              {isSubmitting && submitChannel === 'whatsapp' ? 'Preparando WhatsApp...' : 'Pedir por WhatsApp'}
-            </button>
+          <div className="space-y-4">
+            <div className="rounded-[22px] border border-slate-200 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-brand-ink">Mercado Pago (tarjeta)</p>
+                  <p className="mt-1 text-xs text-slate-500">Pagás online con tarjeta a través de Mercado Pago.</p>
+                </div>
+                <p className="text-lg font-black text-brand-ink" data-testid="checkout-total-card">
+                  {formatCurrency(totals.card)}
+                </p>
+              </div>
+              <button
+                className="mt-4 rounded-full bg-brand-orange px-6 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-50"
+                disabled={checkoutActionsDisabled}
+                type="submit"
+              >
+                {isSubmitting && submitChannel === 'mercadopago' ? 'Redirigiendo al pago...' : 'Pagar con Mercado Pago'}
+              </button>
+            </div>
+
+            <div className="rounded-[22px] border border-slate-200 p-5">
+              <p className="text-sm font-black text-brand-ink">Pedido por WhatsApp</p>
+              <p className="mt-1 text-xs text-slate-500">Coordinás el pago y la entrega con nosotros. Elegí cómo vas a pagar:</p>
+              <fieldset className="mt-4 grid gap-3 sm:grid-cols-2">
+                <legend className="sr-only">Medio de pago para el pedido por WhatsApp</legend>
+                {(
+                  [
+                    { label: 'Efectivo', method: 'cash' },
+                    { label: 'Transferencia', method: 'transfer' },
+                  ] as const
+                ).map((option) => (
+                  <label
+                    className={`flex cursor-pointer items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm transition-colors ${
+                      whatsAppPaymentMethod === option.method
+                        ? 'border-brand-orange bg-orange-50'
+                        : 'border-slate-200 hover:border-brand-orange'
+                    }`}
+                    key={option.method}
+                  >
+                    <span className="flex items-center gap-2 font-black text-brand-ink">
+                      <input
+                        checked={whatsAppPaymentMethod === option.method}
+                        className="accent-brand-orange"
+                        name="whatsAppPaymentMethod"
+                        onChange={() => setWhatsAppPaymentMethod(option.method)}
+                        type="radio"
+                        value={option.method}
+                      />
+                      {option.label}
+                    </span>
+                    <span className="font-black text-brand-ink" data-testid={`checkout-total-${option.method}`}>
+                      {formatCurrency(totals[option.method])}
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+              <button
+                className="mt-4 rounded-full border border-brand-orange px-6 py-3 text-sm font-black text-brand-orange disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                disabled={checkoutActionsDisabled}
+                onClick={() => {
+                  pendingWhatsAppTabRef.current?.close()
+                  pendingWhatsAppTabRef.current = createWhatsAppTabHandle()
+                  void onWhatsAppSubmit()
+                }}
+                type="button"
+              >
+                {isSubmitting && submitChannel === 'whatsapp' ? 'Preparando WhatsApp...' : 'Pedir por WhatsApp'}
+              </button>
+            </div>
           </div>
         </form>
       </section>
@@ -258,7 +316,7 @@ export function CheckoutPageClient() {
 
         <div className="mt-6 space-y-3 border-t border-slate-100 pt-6">
           <div className="flex items-center justify-between text-sm text-slate-500">
-            <span>Subtotal de productos</span>
+            <span>{hasAlternativeTotals ? 'Subtotal en efectivo' : 'Subtotal de productos'}</span>
             <span className="font-bold text-brand-ink">{formatCurrency(subtotal)}</span>
           </div>
           <div className="flex items-center justify-between text-sm text-slate-500">
@@ -267,9 +325,23 @@ export function CheckoutPageClient() {
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-6 text-base font-black text-brand-ink">
-          <span>Total</span>
-          <span>{formatCurrency(subtotal)}</span>
+        <div className="mt-6 space-y-2 border-t border-slate-100 pt-6">
+          <div className="flex items-center justify-between text-base font-black text-brand-ink">
+            <span>{hasAlternativeTotals ? 'Total en efectivo' : 'Total'}</span>
+            <span>{formatCurrency(subtotal)}</span>
+          </div>
+          {totals.transfer !== subtotal ? (
+            <div className="flex items-center justify-between text-sm text-slate-500">
+              <span>Por transferencia</span>
+              <span className="font-bold text-brand-ink">{formatCurrency(totals.transfer)}</span>
+            </div>
+          ) : null}
+          {totals.card !== subtotal ? (
+            <div className="flex items-center justify-between text-sm text-slate-500">
+              <span>Con tarjeta (Mercado Pago)</span>
+              <span className="font-bold text-brand-ink">{formatCurrency(totals.card)}</span>
+            </div>
+          ) : null}
         </div>
       </aside>
     </div>

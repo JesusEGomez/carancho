@@ -7,6 +7,10 @@ import { CartProvider } from '@/providers/CartProvider'
 import { ToastProvider } from '@/providers/ToastProvider'
 import { CheckoutPageClient } from '@/components/store/CheckoutPageClient'
 
+vi.mock('@/services/store/productPricesApi', () => ({
+  fetchProductPrices: vi.fn(async () => []),
+}))
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),

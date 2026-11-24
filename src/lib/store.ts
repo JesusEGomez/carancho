@@ -94,6 +94,9 @@ const previewFeaturedCategories = (limit?: number) => {
 const previewFeaturedProducts = (limit: number) =>
   isPreviewFallbackEnabled() ? previewProducts.slice(0, limit) : []
 
+const previewOfferProducts = (limit: number) =>
+  isPreviewFallbackEnabled() ? previewProducts.filter((product) => product.showInOffers).slice(0, limit) : []
+
 export async function getFeaturedCategories(limit?: number) {
   const payload = await getPayloadSafely()
 
@@ -174,6 +177,47 @@ export async function getFeaturedProducts(limit = 8) {
   } catch (error) {
     console.error(`Failed to load featured products from Payload, ${degradedNotice()}`, error)
     return previewFeaturedProducts(limit)
+  }
+}
+
+export async function getOfferProducts(limit = 12) {
+  const payload = await getPayloadSafely()
+
+  if (!payload) {
+    return previewOfferProducts(limit)
+  }
+
+  try {
+    const result = await payload.find({
+      collection: 'products',
+      depth: 2,
+      limit,
+      overrideAccess: false,
+      sort: '-updatedAt',
+      where: {
+        and: [
+          {
+            showInOffers: {
+              equals: true,
+            },
+          },
+          {
+            status: {
+              equals: 'published',
+            },
+          },
+        ],
+      },
+    })
+
+    if (!result.docs.length) {
+      return previewOfferProducts(limit)
+    }
+
+    return result.docs.map(normalizeProduct).slice(0, limit)
+  } catch (error) {
+    console.error(`Failed to load offer products from Payload, ${degradedNotice()}`, error)
+    return previewOfferProducts(limit)
   }
 }
 

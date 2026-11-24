@@ -33,6 +33,7 @@ describe('WhatsApp checkout route', () => {
             deliveryNotes: '',
           },
           items: [{ productId: 1, quantity: 1 }],
+          paymentMethod: 'transfer',
         }),
         headers: {
           'content-type': 'application/json',
@@ -42,6 +43,7 @@ describe('WhatsApp checkout route', () => {
     )
 
     expect(response.status).toBe(201)
+    expect(createWhatsAppCheckout).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: 'transfer' }))
     await expect(response.json()).resolves.toEqual({
       confirmationToken: 'token-123',
       orderId: 55,
@@ -56,6 +58,32 @@ describe('WhatsApp checkout route', () => {
         body: JSON.stringify({
           customer: {},
           items: [],
+        }),
+        headers: {
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(createWhatsAppCheckout).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, 'card', 'bitcoin'])('returns 400 when the payment method is %s', async (paymentMethod) => {
+    const { POST } = await import('@/app/api/checkout/create-whatsapp/route')
+    const response = await POST(
+      new Request('https://example.com/api/checkout/create-whatsapp', {
+        body: JSON.stringify({
+          customer: {
+            customerEmail: 'ana@example.com',
+            customerName: 'Ana Perez',
+            customerPhone: '1155551111',
+            deliveryAddress: 'Av. Siempre Viva 123',
+            deliveryCity: 'Buenos Aires',
+          },
+          items: [{ productId: 1, quantity: 1 }],
+          paymentMethod,
         }),
         headers: {
           'content-type': 'application/json',

@@ -1,4 +1,5 @@
 import { formatCurrency } from '@/lib/formatCurrency'
+import { PAYMENT_METHOD_LABELS, type PaymentMethod } from '@/lib/pricing'
 
 type CheckoutMessageItem = {
   lineTotal: number
@@ -16,6 +17,7 @@ type CheckoutMessageOrder = {
   deliveryNotes?: string | null
   id: number
   items: CheckoutMessageItem[]
+  paymentMethod?: PaymentMethod | null
   total: number
 }
 
@@ -83,6 +85,7 @@ export function buildWhatsAppCheckoutMessage(order: CheckoutMessageOrder) {
     'Productos:',
     ...order.items.map((item) => `- ${item.productName}: ${item.quantity} x ${money(item.unitPrice)} = ${money(item.lineTotal)}`),
     '',
+    ...(order.paymentMethod ? [`Medio de pago: ${PAYMENT_METHOD_LABELS[order.paymentMethod]}`] : []),
     `Total: ${money(order.total)}`,
   ]
 

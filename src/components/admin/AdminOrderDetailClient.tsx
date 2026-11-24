@@ -1,9 +1,17 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
 
-import { useOrder, useUpdateOrderStatus } from '@/hooks/admin/useAdminOrders'
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
+import {
+  useCancelOrder,
+  useOrder,
+  useUpdateOrderPaymentMethod,
+  useUpdateOrderStatus,
+} from '@/hooks/admin/useAdminOrders'
 import { formatCurrency } from '@/lib/formatCurrency'
+import { PAYMENT_METHOD_LABELS } from '@/lib/pricing'
 import { useToast } from '@/providers/ToastProvider'
 import type { ProductRecord } from '@/services/adminApi'
 
@@ -32,11 +40,26 @@ function relation(value: ProductRecord | number | null | undefined) {
 export function AdminOrderDetailClient({ id }: { id: string }) {
   const orderQuery = useOrder(id)
   const updateOrderStatus = useUpdateOrderStatus()
+  const updatePaymentMethod = useUpdateOrderPaymentMethod()
+  const cancelOrder = useCancelOrder()
   const { showError } = useToast()
+  const [openDialog, setOpenDialog] = useState<'finalize' | 'cancel' | null>(null)
   const order = orderQuery.data
   const error = orderQuery.error?.message ?? null
 
+  const isPendingWhatsApp = order?.status === 'pending_whatsapp' && order.paymentProvider === 'whatsapp'
   const canFinalizeOrder = order?.status === 'pending_whatsapp'
+  // Defensive: orders without a recorded method or per-method snapshots cannot be repriced.
+  const canSwitchPaymentMethod =
+    isPendingWhatsApp &&
+    (order.paymentMethod === 'cash' || order.paymentMethod === 'transfer') &&
+    Boolean(order.items?.length) &&
+    (order.items ?? []).every(
+      (item) => typeof item.cashUnitPrice === 'number' && typeof item.transferUnitPrice === 'number',
+    )
+  const isMutating = updateOrderStatus.isPending || updatePaymentMethod.isPending || cancelOrder.isPending
+  const paymentMethodLabel = order?.paymentMethod ? PAYMENT_METHOD_LABELS[order.paymentMethod] : '-'
+  const nextPaymentMethod = order?.paymentMethod === 'transfer' ? 'cash' : 'transfer'
 
   const handleFinalizeOrder = async () => {
     if (!order) {
@@ -49,8 +72,34 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
         paymentProvider: order.paymentProvider,
         status: 'confirmed',
       })
+      setOpenDialog(null)
     } catch (mutationError) {
       showError(mutationError instanceof Error ? mutationError.message : 'No se pudo finalizar la orden.')
+    }
+  }
+
+  const handleSwitchPaymentMethod = async () => {
+    if (!order) {
+      return
+    }
+
+    try {
+      await updatePaymentMethod.mutateAsync({ id: String(order.id), paymentMethod: nextPaymentMethod })
+    } catch (mutationError) {
+      showError(mutationError instanceof Error ? mutationError.message : 'No se pudo cambiar el medio de pago.')
+    }
+  }
+
+  const handleCancelOrder = async () => {
+    if (!order) {
+      return
+    }
+
+    try {
+      await cancelOrder.mutateAsync({ id: String(order.id) })
+      setOpenDialog(null)
+    } catch (mutationError) {
+      showError(mutationError instanceof Error ? mutationError.message : 'No se pudo cancelar la orden.')
     }
   }
 
@@ -72,16 +121,42 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
             <p className="mt-2 text-sm text-slate-500">{order.customerEmail}</p>
           </div>
           <div className="flex flex-wrap gap-3">
+            {canSwitchPaymentMethod ? (
+              <button
+                className="rounded-full border border-brand-orange px-5 py-3 text-sm font-black text-brand-orange disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isMutating}
+                onClick={() => {
+                  void handleSwitchPaymentMethod()
+                }}
+                type="button"
+              >
+                {updatePaymentMethod.isPending
+                  ? 'Actualizando...'
+                  : `Cambiar a ${PAYMENT_METHOD_LABELS[nextPaymentMethod]}`}
+              </button>
+            ) : null}
             {canFinalizeOrder ? (
               <button
                 className="rounded-full bg-brand-orange px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={updateOrderStatus.isPending}
+                disabled={isMutating}
                 onClick={() => {
-                  void handleFinalizeOrder()
+                  setOpenDialog('finalize')
+                  // Another admin may have switched the method; show current data in the dialog.
+                  void orderQuery.refetch()
                 }}
                 type="button"
               >
                 {updateOrderStatus.isPending ? 'Finalizando...' : 'Dar por finalizada'}
+              </button>
+            ) : null}
+            {isPendingWhatsApp ? (
+              <button
+                className="rounded-full border border-red-200 px-5 py-3 text-sm font-black text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isMutating}
+                onClick={() => setOpenDialog('cancel')}
+                type="button"
+              >
+                {cancelOrder.isPending ? 'Cancelando...' : 'Cancelar orden'}
               </button>
             ) : null}
             <Link className="rounded-full border border-slate-200 px-5 py-3 text-sm font-black text-brand-ink" href="/admin/ordenes">
@@ -90,10 +165,11 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <DetailCard label="Estado interno" value={ORDER_STATUS_LABELS[order.status]} />
           <DetailCard label="Total" value={formatCurrency(order.total)} />
           <DetailCard label="Canal" value={order.paymentProvider === 'whatsapp' ? 'WhatsApp' : order.paymentProvider ?? '-'} />
+          <DetailCard label="Medio de pago" value={paymentMethodLabel} />
           <DetailCard label="Estado de pago" value={order.paymentStatus ? PAYMENT_STATUS_LABELS[order.paymentStatus] : '-'} />
         </div>
       </section>
@@ -157,6 +233,47 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
           )}
         </aside>
       </section>
+
+      <ConfirmDialog
+        cancelLabel="Cancelar y actualizar"
+        confirmLabel={updateOrderStatus.isPending ? 'Finalizando...' : 'Sí, finalizar'}
+        isConfirming={updateOrderStatus.isPending}
+        onCancel={() => setOpenDialog(null)}
+        onConfirm={() => {
+          void handleFinalizeOrder()
+        }}
+        open={openDialog === 'finalize'}
+        title="¿Finalizar la orden?"
+      >
+        <p>
+          Medio de pago registrado: <span className="font-black text-brand-ink">{paymentMethodLabel}</span>
+        </p>
+        <p>
+          Total: <span className="font-black text-brand-ink">{formatCurrency(order.total)}</span>
+        </p>
+        <p>
+          ¿Cambió algo con el cliente? Por ejemplo, si iba a pagar en efectivo y terminó pagando por transferencia,
+          primero actualizá la orden y después finalizala.
+        </p>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        cancelLabel="Volver"
+        confirmLabel={cancelOrder.isPending ? 'Cancelando...' : 'Sí, cancelar orden'}
+        isConfirming={cancelOrder.isPending}
+        onCancel={() => setOpenDialog(null)}
+        onConfirm={() => {
+          void handleCancelOrder()
+        }}
+        open={openDialog === 'cancel'}
+        title="¿Cancelar la orden?"
+        tone="danger"
+      >
+        <p>
+          La orden #{order.id} de {order.customerName} por {formatCurrency(order.total)} quedará cancelada. Esta acción
+          no se puede deshacer desde el panel.
+        </p>
+      </ConfirmDialog>
     </div>
   )
 }
