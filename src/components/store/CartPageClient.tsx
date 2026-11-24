@@ -3,10 +3,11 @@
 import Link from 'next/link'
 
 import { formatCurrency } from '@/lib/formatCurrency'
-import { useCart } from '@/providers/CartProvider'
+import { useCart, useRefreshCartPrices } from '@/providers/CartProvider'
 
 export function CartPageClient() {
   const { itemCount, items, removeItem, setQuantity, subtotal, totals } = useCart()
+  useRefreshCartPrices()
 
   if (!items.length) {
     return (

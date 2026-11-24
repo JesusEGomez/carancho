@@ -1,8 +1,9 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
-import { getCartTotals, type CartLine, type CartProductSnapshot } from '@/lib/cart'
+import { applyFreshPrices, getCartTotals, type CartLine, type CartProductSnapshot } from '@/lib/cart'
+import { fetchProductPrices } from '@/services/store/productPricesApi'
 import type { PaymentMethod } from '@/lib/pricing'
 import { useToast } from '@/providers/ToastProvider'
 
@@ -11,8 +12,10 @@ const STORAGE_KEY = 'carancho-store-cart'
 type CartContextValue = {
   addItem: (product: CartProductSnapshot, quantity?: number) => void
   clearCart: (options?: { silent?: boolean }) => void
+  hasHydrated: boolean
   itemCount: number
   items: CartLine[]
+  refreshPrices: (productIds: number[]) => Promise<void>
   removeItem: (productId: number) => void
   setQuantity: (productId: number, quantity: number) => void
   /** Cash subtotal. */
@@ -146,6 +149,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
   }, [hasHydrated, items])
 
+  const refreshPrices = useCallback(async (productIds: number[]) => {
+    try {
+      const fresh = await fetchProductPrices(productIds)
+      setItems((current) => applyFreshPrices(current, fresh))
+    } catch (error) {
+      // Display-only refresh: the server prices every order from the database anyway.
+      console.warn('Could not refresh cart prices', error)
+    }
+  }, [])
+
   const value = useMemo<CartContextValue>(() => {
     const addItem = (product: CartProductSnapshot, quantity = 1) => {
       const result = getAddItemResult(items, product, quantity)
@@ -189,14 +202,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return {
       addItem,
       clearCart,
+      hasHydrated,
       itemCount,
       items,
+      refreshPrices,
       removeItem,
       setQuantity,
       subtotal,
       totals,
     }
-  }, [items, showToast])
+  }, [hasHydrated, items, refreshPrices, showToast])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
@@ -209,4 +224,21 @@ export function useCart() {
   }
 
   return context
+}
+
+/** Refreshes the cart's price snapshots from the server whenever the set of products changes. */
+export function useRefreshCartPrices() {
+  const { hasHydrated, items, refreshPrices } = useCart()
+  const productIdsKey = items
+    .map((item) => item.product.id)
+    .sort((a, b) => a - b)
+    .join(',')
+
+  useEffect(() => {
+    if (!hasHydrated || !productIdsKey) {
+      return
+    }
+
+    void refreshPrices(productIdsKey.split(',').map(Number))
+  }, [hasHydrated, productIdsKey, refreshPrices])
 }

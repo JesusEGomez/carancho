@@ -15,13 +15,14 @@ import { CHECKOUT_ERROR_CODES } from '@/lib/checkout-errors'
 import { createOrder, createWhatsAppOrder } from '@/services/store/checkoutApi'
 import { checkoutFormSchema, type CheckoutFormData, type WhatsAppPaymentMethod } from '@/lib/checkout-schema'
 import { formatCurrency } from '@/lib/formatCurrency'
-import { useCart } from '@/providers/CartProvider'
+import { useCart, useRefreshCartPrices } from '@/providers/CartProvider'
 import { useToast } from '@/providers/ToastProvider'
 import { ApiError } from '@/lib/client/api'
 
 export function CheckoutPageClient() {
   const router = useRouter()
   const { clearCart, items, subtotal, totals } = useCart()
+  useRefreshCartPrices()
   const { showError } = useToast()
   const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0)
   const distinctProducts = items.length
