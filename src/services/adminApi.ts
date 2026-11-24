@@ -33,6 +33,7 @@ export type ProductRecord = {
   stock: number
   status: 'published' | 'draft'
   isFeatured: boolean
+  showInOffers?: boolean | null
   showFeatures?: boolean | null
   showSpecifications?: boolean | null
   badges?: ('nuevo' | 'oferta' | 'destacado')[] | null

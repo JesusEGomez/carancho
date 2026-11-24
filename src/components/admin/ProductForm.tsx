@@ -41,6 +41,7 @@ const productFormSchema = z
     name: z.string().trim().min(3, 'El nombre debe tener al menos 3 caracteres'),
     parentCategoryId: z.coerce.number().min(1, 'Selecciona una categoría'),
     price: z.coerce.number().min(0, 'El precio efectivo debe ser mayor o igual a 0'),
+    showInOffers: z.boolean().default(false),
     shortDescription: z.string().trim().min(10, 'La descripción corta debe tener al menos 10 caracteres'),
     showFeatures: z.boolean().default(false),
     showSpecifications: z.boolean().default(false),
@@ -102,6 +103,7 @@ const defaultValues: ProductFormData = {
   parentCategoryId: 0,
   price: 0,
   shortDescription: '',
+  showInOffers: false,
   showFeatures: false,
   showSpecifications: false,
   specifications: [],
@@ -268,6 +270,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 price: values.price,
                 shortDescription: values.shortDescription.trim(),
                 showFeatures: values.showFeatures,
+                showInOffers: values.showInOffers,
                 showSpecifications: values.showSpecifications,
                 specifications: values.specifications.map((item) => ({
                   label: item.label.trim(),
@@ -459,6 +462,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
           <label className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-brand-ink">
             <input type="checkbox" {...register('isFeatured')} />
             Mostrar en destacados
+          </label>
+          <label className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-brand-ink">
+            <input type="checkbox" {...register('showInOffers')} />
+            Mostrar en ofertas
           </label>
           {(['nuevo', 'oferta', 'destacado'] as const).map((badge) => (
             <label

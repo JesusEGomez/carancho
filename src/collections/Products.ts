@@ -120,6 +120,12 @@ export const Products: CollectionConfig = {
       defaultValue: false,
     },
     {
+      name: 'showInOffers',
+      type: 'checkbox',
+      label: 'Mostrar en ofertas',
+      defaultValue: false,
+    },
+    {
       name: 'badges',
       type: 'select',
       hasMany: true,

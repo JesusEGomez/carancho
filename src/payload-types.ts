@@ -206,6 +206,7 @@ export interface Product {
   compareAtPrice?: number | null;
   stock: number;
   isFeatured?: boolean | null;
+  showInOffers?: boolean | null;
   badges?: ('nuevo' | 'oferta' | 'destacado')[] | null;
   featuredImage: number | Media;
   gallery?: (number | Media)[] | null;
@@ -445,6 +446,7 @@ export interface ProductsSelect<T extends boolean = true> {
   compareAtPrice?: T;
   stock?: T;
   isFeatured?: T;
+  showInOffers?: T;
   badges?: T;
   featuredImage?: T;
   gallery?: T;

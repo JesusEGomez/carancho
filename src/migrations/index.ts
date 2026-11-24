@@ -11,6 +11,7 @@ import * as migration_20260430_111500_category_store_visibility from './20260430
 import * as migration_20260516_151500_store_contact_instagram_url from './20260516_151500_store_contact_instagram_url';
 import * as migration_20261124_120000_product_payment_prices from './20261124_120000_product_payment_prices';
 import * as migration_20261124_121000_order_payment_method from './20261124_121000_order_payment_method';
+import * as migration_20261124_122000_product_show_in_offers from './20261124_122000_product_show_in_offers';
 
 export const migrations = [
   {
@@ -77,5 +78,10 @@ export const migrations = [
     up: migration_20261124_121000_order_payment_method.up,
     down: migration_20261124_121000_order_payment_method.down,
     name: '20261124_121000_order_payment_method'
+  },
+  {
+    up: migration_20261124_122000_product_show_in_offers.up,
+    down: migration_20261124_122000_product_show_in_offers.down,
+    name: '20261124_122000_product_show_in_offers'
   },
 ];

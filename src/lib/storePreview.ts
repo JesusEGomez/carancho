@@ -49,6 +49,7 @@ const product = (input: {
   category: PreviewCategory
   badge?: 'nuevo' | 'oferta' | 'destacado'
   isFeatured?: boolean
+  showInOffers?: boolean
   image?: string
   features: string[]
   specifications: Array<[string, string]>
@@ -67,6 +68,7 @@ const product = (input: {
     status: 'published',
     badges: input.badge ? [input.badge] : [],
     isFeatured: input.isFeatured ?? true,
+    showInOffers: input.showInOffers ?? input.badge === 'oferta',
     category: input.category,
     featuredImage: media(input.id + 2000, input.name, input.image),
     gallery: [media(input.id + 3000, `${input.name} gallery`, input.image)],

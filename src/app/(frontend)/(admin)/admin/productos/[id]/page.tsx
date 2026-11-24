@@ -53,6 +53,7 @@ export default function EditProductPage({ params }: Props) {
     price: product.price,
     shortDescription: product.shortDescription,
     showFeatures: product.showFeatures ?? features.length > 0,
+    showInOffers: product.showInOffers ?? false,
     showSpecifications: product.showSpecifications ?? specifications.length > 0,
     specifications: specifications.map((item) => ({ label: item.label, value: item.value })),
     status: product.status,
