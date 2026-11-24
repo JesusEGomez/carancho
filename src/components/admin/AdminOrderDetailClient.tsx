@@ -139,7 +139,11 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
               <button
                 className="rounded-full bg-brand-orange px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={isMutating}
-                onClick={() => setOpenDialog('finalize')}
+                onClick={() => {
+                  setOpenDialog('finalize')
+                  // Another admin may have switched the method; show current data in the dialog.
+                  void orderQuery.refetch()
+                }}
                 type="button"
               >
                 {updateOrderStatus.isPending ? 'Finalizando...' : 'Dar por finalizada'}
