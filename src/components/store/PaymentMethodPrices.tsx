@@ -55,13 +55,18 @@ export function PaymentMethodPrices({ product }: { product: PricedProduct }) {
     return null
   }
 
+  // Three cards share one row on wide screens, so each stacks its icon above the text to fit long labels.
+  const isCompact = prices.length === 3
+
   return (
     <div className="mt-5">
       <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Precio según medio de pago</p>
-      <ul className={`mt-3 grid gap-3 ${prices.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+      <ul className={`mt-3 grid gap-3 ${isCompact ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         {prices.map(({ method, price }) => (
           <li
-            className={`flex items-center gap-3 rounded-[18px] border p-4 ${
+            className={`flex min-w-0 gap-3 rounded-[18px] border p-4 ${
+              isCompact ? 'flex-col items-start' : 'items-center'
+            } ${
               method === 'cash' ? 'border-brand-orange bg-orange-50' : 'border-slate-200 bg-white'
             }`}
             key={method}
@@ -73,8 +78,8 @@ export function PaymentMethodPrices({ product }: { product: PricedProduct }) {
             >
               <PaymentMethodIcon method={method} />
             </span>
-            <span>
-              <span className="block text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+            <span className="min-w-0">
+              <span className="block break-words text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
                 {PAYMENT_METHOD_LABELS[method]}
               </span>
               <span className="block text-lg font-black text-brand-ink">{formatCurrency(price)}</span>
