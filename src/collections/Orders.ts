@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAdmin } from '@/access/isAdmin'
+import { cancelOrderEndpoint, switchOrderPaymentMethodEndpoint } from '@/endpoints/orderAdminActions'
 import { notifyAdminAfterOrderChange } from '@/hooks/orderNotificationHooks'
 import { syncOrderStockAfterChange, validateOrderStockBeforeChange } from '@/hooks/orderStockHooks'
 
@@ -16,6 +17,7 @@ export const Orders: CollectionConfig = {
     read: isAdmin,
     update: isAdmin,
   },
+  endpoints: [switchOrderPaymentMethodEndpoint, cancelOrderEndpoint],
   hooks: {
     afterChange: [syncOrderStockAfterChange, notifyAdminAfterOrderChange],
     beforeChange: [validateOrderStockBeforeChange],
