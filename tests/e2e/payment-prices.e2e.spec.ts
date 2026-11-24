@@ -132,11 +132,9 @@ test.describe('Payment method prices - storefront', () => {
     const newArrivalsBox = await newArrivals.boundingBox()
     expect(offersBox && newArrivalsBox && offersBox.y < newArrivalsBox.y).toBeTruthy()
 
-    const categoriesCarousel = page.locator('section').filter({ has: page.locator('[aria-roledescription="carrusel"]') }).first()
-    if ((await categoriesCarousel.count()) > 0 && !(await categoriesCarousel.evaluate((node) => node.id === 'ofertas'))) {
-      const categoriesBox = await categoriesCarousel.boundingBox()
-      expect(categoriesBox && offersBox && categoriesBox.y < offersBox.y).toBeTruthy()
-    }
+    // The seed creates a category, so the categories section is always rendered here.
+    const categoriesBox = await page.locator('section#categorias').boundingBox()
+    expect(categoriesBox && offersBox && categoriesBox.y < offersBox.y).toBeTruthy()
   })
 
   test('home hides the offers carousel when no product is in offers', async ({ page }) => {

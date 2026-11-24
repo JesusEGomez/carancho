@@ -126,7 +126,7 @@ export async function seedPaymentPriceCatalog(): Promise<SeededPaymentProducts> 
 export async function setShowInOffers(productId: number, showInOffers: boolean) {
   const payload = await getClient()
 
-  await payload.update({ collection: 'products', data: { showInOffers }, id: productId })
+  await payload.update({ collection: 'products', data: { showInOffers }, draft: false, id: productId })
 }
 
 /** Published offer products other than the given ids; used to know whether "no offers" can be asserted. */

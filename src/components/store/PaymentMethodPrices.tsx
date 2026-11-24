@@ -55,7 +55,7 @@ export function PaymentMethodPrices({ product }: { product: PricedProduct }) {
     return null
   }
 
-  // Three cards share one row on wide screens, so each stacks its icon above the text to fit long labels.
+  // From sm up three cards share one row, so each stacks its icon above the text to fit long labels.
   const isCompact = prices.length === 3
 
   return (
@@ -65,7 +65,7 @@ export function PaymentMethodPrices({ product }: { product: PricedProduct }) {
         {prices.map(({ method, price }) => (
           <li
             className={`flex min-w-0 gap-3 rounded-[18px] border p-4 ${
-              isCompact ? 'flex-col items-start' : 'items-center'
+              isCompact ? 'items-center sm:flex-col sm:items-start' : 'items-center'
             } ${
               method === 'cash' ? 'border-brand-orange bg-orange-50' : 'border-slate-200 bg-white'
             }`}
