@@ -1,4 +1,5 @@
 import type { WhatsAppPaymentMethod } from '@/lib/checkout-schema'
+import { getLineTotal, sumMoney } from '@/lib/pricing'
 
 export type AdminOrderStatus =
   | 'draft'
@@ -64,7 +65,7 @@ export function buildPaymentMethodSwitch(order: AdminActionOrder, paymentMethod:
     return {
       ...item,
       product: typeof item.product === 'number' ? item.product : item.product.id,
-      lineTotal: snapshot * item.quantity,
+      lineTotal: getLineTotal(snapshot, item.quantity),
       unitPrice: snapshot,
     }
   })
@@ -73,7 +74,7 @@ export function buildPaymentMethodSwitch(order: AdminActionOrder, paymentMethod:
     throw new AdminOrderActionError('La orden no tiene productos.', 422)
   }
 
-  const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0)
+  const subtotal = sumMoney(items.map((item) => item.lineTotal))
 
   return {
     items,

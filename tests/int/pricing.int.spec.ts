@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   getConfiguredPaymentPrices,
   getDiscountPercentage,
+  getLineTotal,
   getUnitPrice,
   normalizeOptionalPrice,
+  roundMoney,
+  sumMoney,
   validateAlternativePrice,
 } from '@/lib/pricing'
 
@@ -63,5 +66,11 @@ describe('pricing', () => {
     expect(validateAlternativePrice(1200, 1000)).toBe(true)
     expect(validateAlternativePrice(900, 1000)).toBe('El precio no puede ser menor al precio efectivo')
     expect(validateAlternativePrice(-1, undefined)).toBe('El precio debe ser mayor o igual a 0')
+  })
+
+  it('rounds line totals and totals to cents', () => {
+    expect(roundMoney(1.005)).toBe(1.01)
+    expect(getLineTotal(19.99, 3)).toBe(59.97)
+    expect(sumMoney([0.1, 0.2])).toBe(0.3)
   })
 })

@@ -14,6 +14,19 @@ export type PricedProduct = {
   transferPrice?: number | string | null
 }
 
+/** Rounds a money amount to cents. Every line total and order total goes through here. */
+export function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100
+}
+
+export function getLineTotal(unitPrice: number, quantity: number): number {
+  return roundMoney(unitPrice * quantity)
+}
+
+export function sumMoney(values: number[]): number {
+  return roundMoney(values.reduce((sum, value) => sum + value, 0))
+}
+
 /** Returns the alternative price as a number, or null when the field is unset (null, undefined, empty or not finite). */
 export function normalizeOptionalPrice(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === '') {

@@ -1,4 +1,4 @@
-import { getUnitPrice, type PaymentMethod } from '@/lib/pricing'
+import { getLineTotal, getUnitPrice, sumMoney, type PaymentMethod } from '@/lib/pricing'
 
 export type CartProductSnapshot = {
   cardPrice?: number | null
@@ -55,7 +55,7 @@ export function applyFreshPrices(items: CartLine[], fresh: FreshProductPrice[]):
 
 /** Display-only estimate from the cart snapshot; the server recomputes every price from the database. */
 export function getCartTotal(items: CartLine[], method: PaymentMethod) {
-  return items.reduce((sum, item) => sum + getUnitPrice(item.product, method) * item.quantity, 0)
+  return sumMoney(items.map((item) => getLineTotal(getUnitPrice(item.product, method), item.quantity)))
 }
 
 export function getCartTotals(items: CartLine[]): Record<PaymentMethod, number> {

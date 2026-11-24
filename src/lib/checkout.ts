@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto'
 import { createOutOfStockError, createUnavailableProductError } from '@/lib/checkout-errors'
 import { getPayloadClient } from '@/lib/payload'
 import type { CartItem, CreateOrderRequest } from '@/lib/checkout-schema'
-import { getUnitPrice, type PaymentMethod } from '@/lib/pricing'
+import { getLineTotal, getUnitPrice, sumMoney, type PaymentMethod } from '@/lib/pricing'
 
 type ProductRecord = {
   cardPrice?: number | null
@@ -85,7 +85,7 @@ export async function buildValidatedOrderData(input: CreateOrderRequest, payment
 
     return {
       cashUnitPrice: getUnitPrice(product, 'cash'),
-      lineTotal: unitPrice * item.quantity,
+      lineTotal: getLineTotal(unitPrice, item.quantity),
       product: product.id,
       productName: product.name,
       productSlug: product.slug,
@@ -95,7 +95,7 @@ export async function buildValidatedOrderData(input: CreateOrderRequest, payment
     }
   })
 
-  const subtotal = orderItems.reduce((sum, item) => sum + item.lineTotal, 0)
+  const subtotal = sumMoney(orderItems.map((item) => item.lineTotal))
 
   return {
     confirmationToken: randomUUID(),
