@@ -186,10 +186,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
             <p className="mt-4 text-sm font-medium text-slate-500">{stockPresentation.helperText}</p>
 
-            <div className="mt-8 grid gap-4 rounded-[22px] border border-slate-200 bg-white p-5 text-center sm:grid-cols-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-orange">Envío gratis</p>
-              </div>
+            <div className="mt-8 grid gap-4 rounded-[22px] border border-slate-200 bg-white p-5 text-center sm:grid-cols-2">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-orange">Garantía oficial</p>
               </div>
