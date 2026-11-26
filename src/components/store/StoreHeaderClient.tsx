@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
+import { useIsHydrated } from '@/hooks/store/useIsHydrated'
 import { useNavigationCategories } from '@/hooks/store/useStoreNavigation'
 import { useCart } from '@/providers/CartProvider'
 import type { CategoryOption } from '@/services/adminApi'
@@ -110,6 +111,8 @@ export function StoreHeaderClient({ showSearch = true }: { showSearch?: boolean 
   const [catalogOpen, setCatalogOpen] = useState(false)
   const closeTimeoutRef = useRef<number | null>(null)
   const { itemCount } = useCart()
+  // The cart lives in localStorage, so the server always renders 0; show the real count only after hydration.
+  const isHydrated = useIsHydrated()
   const navigationCategoriesQuery = useNavigationCategories()
   const navigationCategories = navigationCategoriesQuery.data?.docs ?? []
   const isCatalogPage = pathname === '/productos'
@@ -278,7 +281,7 @@ export function StoreHeaderClient({ showSearch = true }: { showSearch?: boolean 
             >
               <ShoppingCartIcon />
               <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-orange text-[10px] font-bold text-white">
-                {itemCount}
+                {isHydrated ? itemCount : 0}
               </span>
             </Link>
             <button

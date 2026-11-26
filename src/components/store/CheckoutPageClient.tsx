@@ -140,25 +140,25 @@ export function CheckoutPageClient() {
         <form className="mt-8 space-y-5" onSubmit={onSubmit}>
           <div>
             <label className="text-sm font-black text-brand-ink" htmlFor="customerName">
-              Nombre completo
+              Nombre completo <span aria-hidden="true" className="font-bold text-slate-400">(obligatorio)</span>
             </label>
-            <input className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-brand-orange" id="customerName" {...register('customerName')} />
+            <input className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-brand-orange" aria-required="true" id="customerName" {...register('customerName')} />
             {errors.customerName ? <p className="mt-2 text-sm font-bold text-red-600">{errors.customerName.message}</p> : null}
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
             <div>
               <label className="text-sm font-black text-brand-ink" htmlFor="customerEmail">
-                Email
+                Email <span aria-hidden="true" className="font-bold text-slate-400">(obligatorio)</span>
               </label>
-              <input className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-brand-orange" id="customerEmail" {...register('customerEmail')} />
+              <input className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-brand-orange" aria-required="true" id="customerEmail" {...register('customerEmail')} />
               {errors.customerEmail ? <p className="mt-2 text-sm font-bold text-red-600">{errors.customerEmail.message}</p> : null}
             </div>
             <div>
               <label className="text-sm font-black text-brand-ink" htmlFor="customerPhone">
-                Teléfono
+                Teléfono <span aria-hidden="true" className="font-bold text-slate-400">(obligatorio)</span>
               </label>
-              <input className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-brand-orange" id="customerPhone" {...register('customerPhone')} />
+              <input className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-brand-orange" aria-required="true" id="customerPhone" {...register('customerPhone')} />
               {errors.customerPhone ? <p className="mt-2 text-sm font-bold text-red-600">{errors.customerPhone.message}</p> : null}
             </div>
           </div>
@@ -166,16 +166,16 @@ export function CheckoutPageClient() {
           <div className="grid gap-5 md:grid-cols-2">
             <div>
               <label className="text-sm font-black text-brand-ink" htmlFor="deliveryCity">
-                Ciudad
+                Ciudad <span aria-hidden="true" className="font-bold text-slate-400">(obligatorio)</span>
               </label>
-              <input className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-brand-orange" id="deliveryCity" {...register('deliveryCity')} />
+              <input className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-brand-orange" aria-required="true" id="deliveryCity" {...register('deliveryCity')} />
               {errors.deliveryCity ? <p className="mt-2 text-sm font-bold text-red-600">{errors.deliveryCity.message}</p> : null}
             </div>
             <div>
               <label className="text-sm font-black text-brand-ink" htmlFor="deliveryAddress">
-                Dirección
+                Dirección <span aria-hidden="true" className="font-bold text-slate-400">(obligatorio)</span>
               </label>
-              <input className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-brand-orange" id="deliveryAddress" {...register('deliveryAddress')} />
+              <input className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none focus:border-brand-orange" aria-required="true" id="deliveryAddress" {...register('deliveryAddress')} />
               {errors.deliveryAddress ? <p className="mt-2 text-sm font-bold text-red-600">{errors.deliveryAddress.message}</p> : null}
             </div>
           </div>

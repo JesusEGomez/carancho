@@ -100,6 +100,20 @@ describe('CheckoutPageClient', () => {
     root = createRoot(container)
   })
 
+  it('marks only the required fields as obligatorio', async () => {
+    await act(async () => {
+      root.render(<Wrapper />)
+    })
+
+    for (const id of ['customerName', 'customerEmail', 'customerPhone', 'deliveryCity', 'deliveryAddress']) {
+      expect(container.querySelector(`label[for="${id}"]`)?.textContent).toContain('(obligatorio)')
+      expect(container.querySelector(`#${id}`)?.getAttribute('aria-required')).toBe('true')
+    }
+
+    expect(container.querySelector('label[for="deliveryNotes"]')?.textContent).not.toContain('(obligatorio)')
+    expect(container.querySelector('#deliveryNotes')?.hasAttribute('aria-required')).toBe(false)
+  })
+
   it('keeps both checkout actions disabled until required fields are valid', async () => {
     await act(async () => {
       root.render(<Wrapper />)
