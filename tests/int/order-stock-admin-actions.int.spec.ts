@@ -6,14 +6,12 @@ import { buildOrderCancellation, buildPaymentMethodSwitch, type AdminActionOrder
 const pendingOrder: AdminActionOrder = {
   items: [
     {
-      cashUnitPrice: 1000,
       id: 'item-1',
       lineTotal: 1000,
       product: 1,
       productName: 'Caña',
       productSlug: 'cana',
       quantity: 1,
-      transferUnitPrice: 1100,
       unitPrice: 1000,
     },
   ],

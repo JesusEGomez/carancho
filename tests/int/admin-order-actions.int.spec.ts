@@ -17,25 +17,21 @@ function buildOrder(overrides: Partial<AdminActionOrder> = {}): AdminActionOrder
   return {
     items: [
       {
-        cashUnitPrice: 1000,
         id: 'item-1',
         lineTotal: 2000,
         product: 1,
         productName: 'Caña',
         productSlug: 'cana',
         quantity: 2,
-        transferUnitPrice: 1100,
         unitPrice: 1000,
       },
       {
-        cashUnitPrice: 500,
         id: 'item-2',
         lineTotal: 500,
         product: { id: 2 },
         productName: 'Reel',
         productSlug: 'reel',
         quantity: 1,
-        transferUnitPrice: 500,
         unitPrice: 500,
       },
     ],
@@ -49,24 +45,12 @@ function buildOrder(overrides: Partial<AdminActionOrder> = {}): AdminActionOrder
 const otherStatuses: AdminOrderStatus[] = ['draft', 'pending_payment', 'confirmed', 'fulfillment_blocked', 'cancelled']
 
 describe('buildPaymentMethodSwitch', () => {
-  it('reprices from the stored transfer snapshot', () => {
-    const update = buildPaymentMethodSwitch(buildOrder(), 'transfer')
-
-    expect(update.paymentMethod).toBe('transfer')
-    expect(update.items.map((item) => [item.unitPrice, item.lineTotal])).toEqual([
-      [1100, 2200],
-      [500, 500],
-    ])
-    expect(update.items.map((item) => item.id)).toEqual(['item-1', 'item-2'])
-    expect(update.items[1].product).toBe(2)
-    expect(update.subtotal).toBe(2700)
-    expect(update.total).toBe(2700)
+  it('only records the new method and never touches items or totals', () => {
+    expect(buildPaymentMethodSwitch(buildOrder(), 'transfer')).toEqual({ paymentMethod: 'transfer' })
   })
 
-  it('switches back to the cash snapshot', () => {
-    const update = buildPaymentMethodSwitch(buildOrder({ paymentMethod: 'transfer' }), 'cash')
-
-    expect(update.total).toBe(2500)
+  it('switches back to cash', () => {
+    expect(buildPaymentMethodSwitch(buildOrder({ paymentMethod: 'transfer' }), 'cash')).toEqual({ paymentMethod: 'cash' })
   })
 
   it.each(otherStatuses)('rejects orders with status %s', (status) => {
@@ -77,13 +61,6 @@ describe('buildPaymentMethodSwitch', () => {
     expect(() => buildPaymentMethodSwitch(buildOrder({ paymentProvider: 'mercadopago' }), 'transfer')).toThrow(
       AdminOrderActionError,
     )
-  })
-
-  it('rejects legacy orders without price snapshots', () => {
-    const order = buildOrder()
-    order.items = order.items!.map((item) => ({ ...item, transferUnitPrice: null }))
-
-    expect(() => buildPaymentMethodSwitch(order, 'transfer')).toThrow(/precios por medio de pago/)
   })
 })
 
@@ -194,7 +171,7 @@ describe('order admin endpoints', () => {
     )
 
     expect(response.status).toBe(200)
-    expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ total: 2700 }) }))
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: { paymentMethod: 'transfer' } }))
   })
 
   it('rejects card as a WhatsApp payment method', async () => {

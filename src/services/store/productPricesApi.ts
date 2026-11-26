@@ -15,10 +15,8 @@ export async function fetchProductPrices(ids: number[]): Promise<FreshProductPri
   const query = new URLSearchParams({
     depth: '0',
     limit: String(ids.length),
-    'select[cardPrice]': 'true',
     'select[price]': 'true',
     'select[stock]': 'true',
-    'select[transferPrice]': 'true',
     'where[id][in]': ids.join(','),
     'where[status][equals]': 'published',
   })

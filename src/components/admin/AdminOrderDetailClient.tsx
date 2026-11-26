@@ -49,14 +49,9 @@ export function AdminOrderDetailClient({ id }: { id: string }) {
 
   const isPendingWhatsApp = order?.status === 'pending_whatsapp' && order.paymentProvider === 'whatsapp'
   const canFinalizeOrder = order?.status === 'pending_whatsapp'
-  // Defensive: orders without a recorded method or per-method snapshots cannot be repriced.
+  // Cash and transfer charge the same price: switching only records the method, totals stay the same.
   const canSwitchPaymentMethod =
-    isPendingWhatsApp &&
-    (order.paymentMethod === 'cash' || order.paymentMethod === 'transfer') &&
-    Boolean(order.items?.length) &&
-    (order.items ?? []).every(
-      (item) => typeof item.cashUnitPrice === 'number' && typeof item.transferUnitPrice === 'number',
-    )
+    isPendingWhatsApp && (order.paymentMethod === 'cash' || order.paymentMethod === 'transfer')
   const isMutating = updateOrderStatus.isPending || updatePaymentMethod.isPending || cancelOrder.isPending
   const paymentMethodLabel = order?.paymentMethod ? PAYMENT_METHOD_LABELS[order.paymentMethod] : '-'
   const nextPaymentMethod = order?.paymentMethod === 'transfer' ? 'cash' : 'transfer'
