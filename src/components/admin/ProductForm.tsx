@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm, useWatch, type Resolver } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
@@ -30,13 +30,21 @@ const specificationSchema = z.object({
   value: z.string().trim().min(1, 'El valor es obligatorio'),
 })
 
+const installmentPlanSchema = z.object({
+  installmentAmount: z.coerce.number().gt(0, 'El valor de la cuota debe ser mayor a 0'),
+  installments: z.coerce
+    .number()
+    .int('La cantidad de cuotas debe ser un número entero')
+    .min(2, 'La cantidad de cuotas debe ser mayor o igual a 2'),
+})
+
 const productFormSchema = z
   .object({
     badges: z.array(z.enum(['nuevo', 'oferta', 'destacado'])).default([]),
-    cardPrice: z.union([z.literal(''), z.coerce.number().min(0, 'El precio tarjeta debe ser positivo')]),
     compareAtPrice: z.union([z.literal(''), z.coerce.number().min(0, 'El precio comparado debe ser positivo')]),
     description: z.string().trim().min(10, 'La descripción debe tener al menos 10 caracteres'),
     features: z.array(featureSchema).default([]),
+    installmentPlans: z.array(installmentPlanSchema).default([]),
     isFeatured: z.boolean().default(false),
     name: z.string().trim().min(3, 'El nombre debe tener al menos 3 caracteres'),
     parentCategoryId: z.coerce.number().min(1, 'Selecciona una categoría'),
@@ -49,7 +57,6 @@ const productFormSchema = z
     status: z.enum(['published', 'draft']),
     stock: z.coerce.number().min(0, 'El stock debe ser mayor o igual a 0'),
     subcategoryId: z.coerce.number().min(0),
-    transferPrice: z.union([z.literal(''), z.coerce.number().min(0, 'El precio transferencia debe ser positivo')]),
   })
   .superRefine((values, context) => {
     if (values.compareAtPrice !== '' && Number(values.compareAtPrice) < values.price) {
@@ -60,16 +67,19 @@ const productFormSchema = z
       })
     }
 
-    for (const field of ['transferPrice', 'cardPrice'] as const) {
-      if (values[field] !== '' && Number(values[field]) < values.price) {
+    const seenInstallments = new Set<number>()
+
+    values.installmentPlans.forEach((plan, index) => {
+      if (seenInstallments.has(plan.installments)) {
         context.addIssue({
           code: 'custom',
-          message: 'No puede ser menor al precio efectivo',
-          path: [field],
+          message: 'Ya hay un plan con esta cantidad de cuotas',
+          path: ['installmentPlans', index, 'installments'],
         })
       }
-    }
 
+      seenInstallments.add(plan.installments)
+    })
   })
 
 export type ProductFormValues = z.infer<typeof productFormSchema>
@@ -92,12 +102,12 @@ type UploadErrors = {
 
 const defaultValues: ProductFormData = {
   badges: [],
-  cardPrice: '',
   compareAtPrice: '',
   description: '',
   featuredImage: null,
   features: [],
   gallery: [],
+  installmentPlans: [],
   isFeatured: true,
   name: '',
   parentCategoryId: 0,
@@ -110,11 +120,6 @@ const defaultValues: ProductFormData = {
   status: 'published',
   stock: 0,
   subcategoryId: 0,
-  transferPrice: '',
-}
-
-function toOptionalPrice(value: number | '' | undefined) {
-  return value === '' || value === undefined ? null : Number(value)
 }
 
 function validateImageFile(file: File) {
@@ -185,6 +190,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
     defaultValues: initialData ?? defaultValues,
     resolver: zodResolver(productFormSchema) as Resolver<ProductFormValues>,
   })
+  const installmentPlanFields = useFieldArray({ control, name: 'installmentPlans' })
 
   const categories = useMemo(() => categoriesQuery.data?.docs ?? [], [categoriesQuery.data?.docs])
   const parentCategories = useMemo(
@@ -256,7 +262,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
               id: initialData?.id ? String(initialData.id) : null,
               payload: {
                 badges: values.badges,
-                cardPrice: toOptionalPrice(values.cardPrice),
                 category: values.subcategoryId || values.parentCategoryId,
                 compareAtPrice:
                   values.compareAtPrice === '' || values.compareAtPrice === undefined
@@ -265,6 +270,10 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 description: values.description.trim(),
                 featuredImage: initialData?.featuredImageId ?? null,
                 features: values.features.map((feature) => ({ label: feature.label.trim() })),
+                installmentPlans: values.installmentPlans.map((plan) => ({
+                  installmentAmount: plan.installmentAmount,
+                  installments: plan.installments,
+                })),
                 isFeatured: values.isFeatured,
                 name: values.name.trim(),
                 price: values.price,
@@ -278,7 +287,6 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 })),
                 status: values.status,
                 stock: values.stock,
-                transferPrice: toOptionalPrice(values.transferPrice),
               },
             })
             .then(() => {
@@ -346,16 +354,8 @@ export function ProductForm({ initialData }: ProductFormProps) {
             </AdminSelect>
           </AdminField>
 
-          <AdminField error={errors.price?.message} label="Precio efectivo" required>
+          <AdminField error={errors.price?.message} label="Precio efectivo / transferencia" required>
             <AdminInput min={0} type="number" {...register('price')} />
-          </AdminField>
-
-          <AdminField error={errors.transferPrice?.message} label="Precio transferencia (opcional)">
-            <AdminInput min={0} type="number" {...register('transferPrice')} />
-          </AdminField>
-
-          <AdminField error={errors.cardPrice?.message} label="Precio tarjeta (opcional)">
-            <AdminInput min={0} type="number" {...register('cardPrice')} />
           </AdminField>
 
           <AdminField error={errors.compareAtPrice?.message} label="Precio comparado">
@@ -448,6 +448,49 @@ export function ProductForm({ initialData }: ProductFormProps) {
               </div>
             </div>
           ) : null}
+        </div>
+
+        <div className="grid gap-3 rounded-2xl border border-slate-200 p-5">
+          <div>
+            <p className="text-sm font-bold text-brand-ink">Cuotas (informativo)</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Solo se muestran en la página del producto. No cambian el monto que cobra Mercado Pago.
+            </p>
+          </div>
+          {installmentPlanFields.fields.map((field, index) => (
+            <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end" key={field.id}>
+              <AdminField
+                error={errors.installmentPlans?.[index]?.installments?.message}
+                label="Cantidad de cuotas"
+                required
+              >
+                <AdminInput min={2} step={1} type="number" {...register(`installmentPlans.${index}.installments`)} />
+              </AdminField>
+              <AdminField
+                error={errors.installmentPlans?.[index]?.installmentAmount?.message}
+                label="Valor de cada cuota"
+                required
+              >
+                <AdminInput min={0} type="number" {...register(`installmentPlans.${index}.installmentAmount`)} />
+              </AdminField>
+              <button
+                className="rounded-full border border-slate-200 px-4 py-3 text-sm font-bold text-slate-500 hover:border-red-200 hover:text-red-600"
+                onClick={() => installmentPlanFields.remove(index)}
+                type="button"
+              >
+                Quitar
+              </button>
+            </div>
+          ))}
+          <div>
+            <button
+              className="rounded-full border border-brand-orange px-4 py-2 text-sm font-bold text-brand-orange"
+              onClick={() => installmentPlanFields.append({ installmentAmount: 0, installments: 3 })}
+              type="button"
+            >
+              Agregar plan de cuotas
+            </button>
+          </div>
         </div>
 
         <AdminField error={errors.shortDescription?.message} label="Descripción corta" required>
