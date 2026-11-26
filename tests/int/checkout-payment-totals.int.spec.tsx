@@ -46,28 +46,26 @@ describe('CheckoutPageClient payment totals', () => {
     cleanup()
   })
 
-  it('shows the total of each payment option', async () => {
-    storeCart({ cardPrice: 1300, id: 1, name: 'Caña', price: 1000, slug: 'cana', stock: 5, transferPrice: 1100 }, 2)
-    fetchProductPrices.mockResolvedValue([{ cardPrice: 1300, id: 1, price: 1000, stock: 5, transferPrice: 1100 }])
+  it('shows the same base total for Mercado Pago and WhatsApp', async () => {
+    storeCart({ id: 1, name: 'Caña', price: 1000, slug: 'cana', stock: 5 }, 2)
+    fetchProductPrices.mockResolvedValue([{ id: 1, price: 1000, stock: 5 }])
 
     renderCheckout()
 
-    expect((await screen.findByTestId('checkout-total-card')).textContent).toMatch(money('2.600'))
-    expect(screen.getByTestId('checkout-total-cash').textContent).toMatch(money('2.000'))
-    expect(screen.getByTestId('checkout-total-transfer').textContent).toMatch(money('2.200'))
+    expect((await screen.findByTestId('checkout-total-mercadopago')).textContent).toMatch(money('2.000'))
+    expect(screen.getByTestId('checkout-total-whatsapp').textContent).toMatch(money('2.000'))
     expect(screen.getByRole('radio', { name: /Efectivo/ })).toBeTruthy()
     expect(screen.getByRole('radio', { name: /Transferencia/ })).toBeTruthy()
   })
 
-  it('refreshes an old cart snapshot so Mercado Pago shows the current card total', async () => {
-    // Saved before alternative prices existed: only the cash price is in the snapshot.
+  it('refreshes an old cart snapshot so every total shows the current price', async () => {
     storeCart({ id: 1, name: 'Caña', price: 1000, slug: 'cana', stock: 5 }, 1)
-    fetchProductPrices.mockResolvedValue([{ cardPrice: 1300, id: 1, price: 1000, stock: 5, transferPrice: null }])
+    fetchProductPrices.mockResolvedValue([{ id: 1, price: 1200, stock: 5 }])
 
     renderCheckout()
 
-    await waitFor(() => expect(screen.getByTestId('checkout-total-card').textContent).toMatch(money('1.300')))
+    await waitFor(() => expect(screen.getByTestId('checkout-total-mercadopago').textContent).toMatch(money('1.200')))
     expect(fetchProductPrices).toHaveBeenCalledWith([1])
-    expect(screen.getByTestId('checkout-total-transfer').textContent).toMatch(money('1.000'))
+    expect(screen.getByTestId('checkout-total-whatsapp').textContent).toMatch(money('1.200'))
   })
 })

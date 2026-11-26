@@ -1,55 +1,52 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  getConfiguredPaymentPrices,
   getDiscountPercentage,
+  getInstallmentPlans,
   getLineTotal,
-  getUnitPrice,
-  normalizeOptionalPrice,
   roundMoney,
   sumMoney,
-  validateAlternativePrice,
+  validateInstallmentAmount,
+  validateInstallmentCount,
 } from '@/lib/pricing'
 
 describe('pricing', () => {
-  it('uses the cash price for cash and as fallback for unset alternatives', () => {
-    const product = { cardPrice: null, price: 1000, transferPrice: undefined }
-
-    expect(getUnitPrice(product, 'cash')).toBe(1000)
-    expect(getUnitPrice(product, 'transfer')).toBe(1000)
-    expect(getUnitPrice(product, 'card')).toBe(1000)
+  it('returns no installment plans when none are set', () => {
+    expect(getInstallmentPlans(undefined)).toEqual([])
+    expect(getInstallmentPlans(null)).toEqual([])
+    expect(getInstallmentPlans([])).toEqual([])
   })
 
-  it('uses alternative prices when they are set', () => {
-    const product = { cardPrice: 1300, price: 1000, transferPrice: 1100 }
-
-    expect(getUnitPrice(product, 'cash')).toBe(1000)
-    expect(getUnitPrice(product, 'transfer')).toBe(1100)
-    expect(getUnitPrice(product, 'card')).toBe(1300)
-  })
-
-  it('treats empty strings and non-numbers as unset', () => {
-    expect(normalizeOptionalPrice('')).toBeNull()
-    expect(normalizeOptionalPrice('abc')).toBeNull()
-    expect(normalizeOptionalPrice('1200')).toBe(1200)
-    expect(getUnitPrice({ cardPrice: '', price: 900 }, 'card')).toBe(900)
-  })
-
-  it('keeps zero as a configured price', () => {
-    expect(normalizeOptionalPrice(0)).toBe(0)
-  })
-
-  it('lists only configured payment prices', () => {
-    expect(getConfiguredPaymentPrices({ price: 1000 })).toEqual([])
-    expect(getConfiguredPaymentPrices({ cardPrice: 1300, price: 1000 })).toEqual([
-      { method: 'cash', price: 1000 },
-      { method: 'card', price: 1300 },
+  it('sorts installment plans and drops invalid or duplicated ones', () => {
+    expect(
+      getInstallmentPlans([
+        { installmentAmount: 2200, installments: 6 },
+        { installmentAmount: '4000', installments: '3' },
+        { installmentAmount: 9999, installments: 3 },
+        { installmentAmount: 5000, installments: 1 },
+        { installmentAmount: 0, installments: 12 },
+        { installmentAmount: 1000, installments: 2.5 },
+        { installmentAmount: null, installments: 9 },
+      ]),
+    ).toEqual([
+      { installmentAmount: 4000, installments: 3 },
+      { installmentAmount: 2200, installments: 6 },
     ])
-    expect(getConfiguredPaymentPrices({ cardPrice: 1300, price: 1000, transferPrice: 1100 })).toEqual([
-      { method: 'cash', price: 1000 },
-      { method: 'transfer', price: 1100 },
-      { method: 'card', price: 1300 },
-    ])
+  })
+
+  it('validates installment counts', () => {
+    expect(validateInstallmentCount(2)).toBe(true)
+    expect(validateInstallmentCount(12)).toBe(true)
+    expect(validateInstallmentCount(null)).toBe('La cantidad de cuotas es obligatoria')
+    expect(validateInstallmentCount(1)).toBe('La cantidad de cuotas debe ser un número entero mayor o igual a 2')
+    expect(validateInstallmentCount(3.5)).toBe('La cantidad de cuotas debe ser un número entero mayor o igual a 2')
+  })
+
+  it('validates installment amounts', () => {
+    expect(validateInstallmentAmount(4000)).toBe(true)
+    expect(validateInstallmentAmount(undefined)).toBe('El valor de la cuota es obligatorio')
+    expect(validateInstallmentAmount(0)).toBe('El valor de la cuota debe ser mayor a 0')
+    expect(validateInstallmentAmount(-1)).toBe('El valor de la cuota debe ser mayor a 0')
   })
 
   it('computes the discount percentage only for a real discount', () => {
@@ -58,14 +55,6 @@ describe('pricing', () => {
     expect(getDiscountPercentage(10000, 10000)).toBeNull()
     expect(getDiscountPercentage(10000, 8000)).toBeNull()
     expect(getDiscountPercentage(10000, null)).toBeNull()
-  })
-
-  it('validates alternative prices against the cash price', () => {
-    expect(validateAlternativePrice(null, 1000)).toBe(true)
-    expect(validateAlternativePrice(1000, 1000)).toBe(true)
-    expect(validateAlternativePrice(1200, 1000)).toBe(true)
-    expect(validateAlternativePrice(900, 1000)).toBe('El precio no puede ser menor al precio efectivo')
-    expect(validateAlternativePrice(-1, undefined)).toBe('El precio debe ser mayor o igual a 0')
   })
 
   it('rounds line totals and totals to cents', () => {

@@ -3,17 +3,15 @@ import { randomUUID } from 'crypto'
 import { createOutOfStockError, createUnavailableProductError } from '@/lib/checkout-errors'
 import { getPayloadClient } from '@/lib/payload'
 import type { CartItem, CreateOrderRequest } from '@/lib/checkout-schema'
-import { getLineTotal, getUnitPrice, sumMoney, type PaymentMethod } from '@/lib/pricing'
+import { getLineTotal, sumMoney, type PaymentMethod } from '@/lib/pricing'
 
 type ProductRecord = {
-  cardPrice?: number | null
   id: number
   name: string
   slug: string
   price: number
   status: 'published' | 'draft'
   stock: number
-  transferPrice?: number | null
 }
 
 function mergeCartItems(items: CartItem[]) {
@@ -31,8 +29,7 @@ function mergeCartItems(items: CartItem[]) {
 
 /**
  * Prices always come from the database: the client only sends product ids and quantities.
- * Each item keeps the cash and transfer snapshots so a WhatsApp order can switch between
- * them later without reading current product prices.
+ * Every payment method charges `price`; `paymentMethod` only records how the customer pays.
  */
 export async function buildValidatedOrderData(input: CreateOrderRequest, paymentMethod: PaymentMethod) {
   const payload = await getPayloadClient()
@@ -57,11 +54,9 @@ export async function buildValidatedOrderData(input: CreateOrderRequest, payment
         id: product.id,
         name: product.name,
         slug: product.slug,
-        cardPrice: product.cardPrice,
         price: product.price,
         status: product.status,
         stock: product.stock,
-        transferPrice: product.transferPrice,
       },
     ]),
   )
@@ -81,16 +76,14 @@ export async function buildValidatedOrderData(input: CreateOrderRequest, payment
       throw createOutOfStockError(product.name)
     }
 
-    const unitPrice = getUnitPrice(product, paymentMethod)
+    const unitPrice = product.price
 
     return {
-      cashUnitPrice: getUnitPrice(product, 'cash'),
       lineTotal: getLineTotal(unitPrice, item.quantity),
       product: product.id,
       productName: product.name,
       productSlug: product.slug,
       quantity: item.quantity,
-      transferUnitPrice: getUnitPrice(product, 'transfer'),
       unitPrice,
     }
   })

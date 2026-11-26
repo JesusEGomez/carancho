@@ -1,5 +1,4 @@
 import type { WhatsAppPaymentMethod } from '@/lib/checkout-schema'
-import { getLineTotal, sumMoney } from '@/lib/pricing'
 
 export type AdminOrderStatus =
   | 'draft'
@@ -10,14 +9,12 @@ export type AdminOrderStatus =
   | 'cancelled'
 
 export type AdminActionOrderItem = {
-  cashUnitPrice?: number | null
   id?: string | null
   lineTotal: number
   product: number | { id: number }
   productName: string
   productSlug: string
   quantity: number
-  transferUnitPrice?: number | null
   unitPrice: number
 }
 
@@ -46,42 +43,13 @@ function assertPendingWhatsAppOrder(order: AdminActionOrder, action: string) {
 }
 
 /**
- * Reprices a pending WhatsApp order from the snapshots stored at checkout time,
- * never from current product prices, so a later price change cannot leak into it.
+ * Cash and transfer charge the same price, so switching only records the new method:
+ * items and totals stay exactly as they were stored at checkout time.
  */
 export function buildPaymentMethodSwitch(order: AdminActionOrder, paymentMethod: WhatsAppPaymentMethod) {
   assertPendingWhatsAppOrder(order, 'cambiar el medio de pago de')
 
-  const items = (order.items ?? []).map((item) => {
-    const snapshot = paymentMethod === 'cash' ? item.cashUnitPrice : item.transferUnitPrice
-
-    if (typeof snapshot !== 'number' || !Number.isFinite(snapshot)) {
-      throw new AdminOrderActionError(
-        'La orden no tiene registrados los precios por medio de pago, no se puede recalcular.',
-        422,
-      )
-    }
-
-    return {
-      ...item,
-      product: typeof item.product === 'number' ? item.product : item.product.id,
-      lineTotal: getLineTotal(snapshot, item.quantity),
-      unitPrice: snapshot,
-    }
-  })
-
-  if (items.length === 0) {
-    throw new AdminOrderActionError('La orden no tiene productos.', 422)
-  }
-
-  const subtotal = sumMoney(items.map((item) => item.lineTotal))
-
-  return {
-    items,
-    paymentMethod,
-    subtotal,
-    total: subtotal,
-  }
+  return { paymentMethod }
 }
 
 /** Mercado Pago orders are never cancelled here: they need a refund through Mercado Pago. */

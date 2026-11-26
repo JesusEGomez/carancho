@@ -21,8 +21,8 @@ const customer: CreateOrderRequest['customer'] = {
 }
 
 const products = [
-  { cardPrice: 1300, id: 1, name: 'Caña', price: 1000, slug: 'cana', status: 'published', stock: 10, transferPrice: 1100 },
-  { cardPrice: null, id: 2, name: 'Reel', price: 500, slug: 'reel', status: 'published', stock: 10, transferPrice: null },
+  { id: 1, name: 'Caña', price: 1000, slug: 'cana', status: 'published', stock: 10 },
+  { id: 2, name: 'Reel', price: 500, slug: 'reel', status: 'published', stock: 10 },
 ]
 
 // The client price is deliberately absent: only ids and quantities reach the server.
@@ -40,27 +40,23 @@ describe('buildValidatedOrderData pricing', () => {
     payloadFind.mockResolvedValue({ docs: products })
   })
 
-  it.each([
-    ['cash', 1000, 500, 2500],
-    ['transfer', 1100, 500, 2700],
-    ['card', 1300, 500, 3100],
-  ] as const)('prices a mixed cart for %s', async (method, firstUnit, secondUnit, total) => {
+  it.each(['cash', 'transfer', 'card'] as const)('charges the base price for %s', async (method) => {
     const order = await buildValidatedOrderData(input, method)
 
     expect(order.paymentMethod).toBe(method)
-    expect(order.items.map((item) => item.unitPrice)).toEqual([firstUnit, secondUnit])
-    expect(order.items.map((item) => item.lineTotal)).toEqual([firstUnit * 2, secondUnit])
-    expect(order.subtotal).toBe(total)
-    expect(order.total).toBe(total)
+    expect(order.items.map((item) => item.unitPrice)).toEqual([1000, 500])
+    expect(order.items.map((item) => item.lineTotal)).toEqual([2000, 500])
+    expect(order.subtotal).toBe(2500)
+    expect(order.total).toBe(2500)
   })
 
-  it('stores cash and transfer snapshots on every item', async () => {
-    const order = await buildValidatedOrderData(input, 'card')
+  it('stores no per-method price snapshots on items', async () => {
+    const order = await buildValidatedOrderData(input, 'cash')
 
-    expect(order.items.map((item) => [item.cashUnitPrice, item.transferUnitPrice])).toEqual([
-      [1000, 1100],
-      [500, 500],
-    ])
+    for (const item of order.items) {
+      expect(item).not.toHaveProperty('cashUnitPrice')
+      expect(item).not.toHaveProperty('transferUnitPrice')
+    }
   })
 
   it('merges repeated cart lines before pricing', async () => {
@@ -76,6 +72,6 @@ describe('buildValidatedOrderData pricing', () => {
     )
 
     expect(order.items).toHaveLength(1)
-    expect(order.items[0]).toMatchObject({ lineTotal: 3300, quantity: 3, unitPrice: 1100 })
+    expect(order.items[0]).toMatchObject({ lineTotal: 3000, quantity: 3, unitPrice: 1000 })
   })
 })

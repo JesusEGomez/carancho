@@ -41,14 +41,12 @@ function buildOrder(overrides: Partial<OrderRecord> = {}): OrderRecord {
     id: 12,
     items: [
       {
-        cashUnitPrice: 1000,
         id: 'item-1',
         lineTotal: 2200,
         product: 1,
         productName: 'Caña',
         productSlug: 'cana',
         quantity: 2,
-        transferUnitPrice: 1100,
         unitPrice: 1100,
       },
     ],
@@ -126,9 +124,8 @@ describe('AdminOrderDetailClient', () => {
     expect(mocks.switchMethod).toHaveBeenCalledWith({ id: '12', paymentMethod: 'cash' })
   })
 
-  it('hides the switch when the order has no price snapshots', () => {
-    const order = buildOrder()
-    mocks.order = { ...order, items: order.items!.map((item) => ({ ...item, transferUnitPrice: null })) }
+  it('hides the switch when the order has no recorded payment method', () => {
+    mocks.order = buildOrder({ paymentMethod: null })
 
     render(<AdminOrderDetailClient id="12" />)
 

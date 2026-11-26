@@ -1,7 +1,6 @@
-import { getLineTotal, getUnitPrice, sumMoney, type PaymentMethod } from '@/lib/pricing'
+import { getLineTotal, sumMoney } from '@/lib/pricing'
 
 export type CartProductSnapshot = {
-  cardPrice?: number | null
   featuredImageAlt?: string | null
   featuredImageUrl?: string | null
   id: number
@@ -9,7 +8,6 @@ export type CartProductSnapshot = {
   price: number
   slug: string
   stock: number
-  transferPrice?: number | null
 }
 
 export type CartLine = {
@@ -18,16 +16,14 @@ export type CartLine = {
 }
 
 export type FreshProductPrice = {
-  cardPrice?: number | null
   id: number
   price: number
   stock: number
-  transferPrice?: number | null
 }
 
 /**
  * Replaces the price and stock snapshots saved when each item was added with current values,
- * so carts saved before alternative prices existed still show the right per-method totals.
+ * so a cart saved before a price change still shows the current total.
  * Items missing from `fresh` (unpublished or deleted) are kept and rejected by the server at checkout.
  */
 export function applyFreshPrices(items: CartLine[], fresh: FreshProductPrice[]): CartLine[] {
@@ -44,24 +40,17 @@ export function applyFreshPrices(items: CartLine[], fresh: FreshProductPrice[]):
       ...item,
       product: {
         ...item.product,
-        cardPrice: current.cardPrice ?? null,
         price: current.price,
         stock: current.stock,
-        transferPrice: current.transferPrice ?? null,
       },
     }
   })
 }
 
-/** Display-only estimate from the cart snapshot; the server recomputes every price from the database. */
-export function getCartTotal(items: CartLine[], method: PaymentMethod) {
-  return sumMoney(items.map((item) => getLineTotal(getUnitPrice(item.product, method), item.quantity)))
-}
-
-export function getCartTotals(items: CartLine[]): Record<PaymentMethod, number> {
-  return {
-    card: getCartTotal(items, 'card'),
-    cash: getCartTotal(items, 'cash'),
-    transfer: getCartTotal(items, 'transfer'),
-  }
+/**
+ * Display-only estimate from the cart snapshot; the server recomputes every price from the database.
+ * Every payment method charges `price`, so there is a single total.
+ */
+export function getCartTotal(items: CartLine[]) {
+  return sumMoney(items.map((item) => getLineTotal(item.product.price, item.quantity)))
 }

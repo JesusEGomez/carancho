@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { AddToCartButton } from '@/components/store/AddToCartButton'
 import type { ProductWithRelations } from '@/lib/store'
 import { formatCurrency } from '@/lib/formatCurrency'
-import { normalizeOptionalPrice } from '@/lib/pricing'
 import { StoreMedia } from '@/components/store/StoreMedia'
 
 const BADGE_LABELS: Record<string, string> = {
@@ -16,7 +15,6 @@ const BADGE_LABELS: Record<string, string> = {
 
 export function ProductCard({ product }: { product: ProductWithRelations }) {
   const image = product.featuredImage
-  const cardPrice = normalizeOptionalPrice(product.cardPrice)
   const firstBadge = product.badges?.[0]
   const badgeLabel = firstBadge ? BADGE_LABELS[firstBadge] : null
   const badgeClassName =
@@ -58,9 +56,6 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
                 {formatCurrency(product.compareAtPrice)}
               </span>
             ) : null}
-            {cardPrice !== null ? (
-              <p className="mt-0.5 text-[11px] font-semibold text-slate-500 sm:text-xs">{formatCurrency(cardPrice)} con tarjeta</p>
-            ) : null}
           </div>
         </div>
 
@@ -74,10 +69,8 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
             featuredImageUrl: image?.url,
             id: product.id,
             name: product.name,
-            cardPrice: product.cardPrice,
             price: product.price,
             slug: product.slug,
-            transferPrice: product.transferPrice,
             stock: product.stock,
           }}
         />

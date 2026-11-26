@@ -21,7 +21,7 @@ import { ApiError } from '@/lib/client/api'
 
 export function CheckoutPageClient() {
   const router = useRouter()
-  const { clearCart, items, subtotal, totals } = useCart()
+  const { clearCart, items, subtotal } = useCart()
   useRefreshCartPrices()
   const { showError } = useToast()
   const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0)
@@ -58,7 +58,6 @@ export function CheckoutPageClient() {
     watchedValues.deliveryCity,
     watchedValues.deliveryAddress,
   ].every((value) => value?.trim())
-  const hasAlternativeTotals = totals.transfer !== subtotal || totals.card !== subtotal
   const checkoutActionsDisabled = isSubmitting || !requiredFieldsCompleted || !isValid
 
   if (!items.length) {
@@ -202,8 +201,8 @@ export function CheckoutPageClient() {
                   <p className="text-sm font-black text-brand-ink">Mercado Pago (tarjeta)</p>
                   <p className="mt-1 text-xs text-slate-500">Pagás online con tarjeta a través de Mercado Pago.</p>
                 </div>
-                <p className="text-lg font-black text-brand-ink" data-testid="checkout-total-card">
-                  {formatCurrency(totals.card)}
+                <p className="text-lg font-black text-brand-ink" data-testid="checkout-total-mercadopago">
+                  {formatCurrency(subtotal)}
                 </p>
               </div>
               <button
@@ -218,6 +217,9 @@ export function CheckoutPageClient() {
             <div className="rounded-[22px] border border-slate-200 p-5">
               <p className="text-sm font-black text-brand-ink">Pedido por WhatsApp</p>
               <p className="mt-1 text-xs text-slate-500">Coordinás el pago y la entrega con nosotros. Elegí cómo vas a pagar:</p>
+              <p className="mt-2 text-lg font-black text-brand-ink" data-testid="checkout-total-whatsapp">
+                {formatCurrency(subtotal)}
+              </p>
               <fieldset className="mt-4 grid gap-3 sm:grid-cols-2">
                 <legend className="sr-only">Medio de pago para el pedido por WhatsApp</legend>
                 {(
@@ -244,9 +246,6 @@ export function CheckoutPageClient() {
                         value={option.method}
                       />
                       {option.label}
-                    </span>
-                    <span className="font-black text-brand-ink" data-testid={`checkout-total-${option.method}`}>
-                      {formatCurrency(totals[option.method])}
                     </span>
                   </label>
                 ))}
@@ -316,7 +315,7 @@ export function CheckoutPageClient() {
 
         <div className="mt-6 space-y-3 border-t border-slate-100 pt-6">
           <div className="flex items-center justify-between text-sm text-slate-500">
-            <span>{hasAlternativeTotals ? 'Subtotal en efectivo' : 'Subtotal de productos'}</span>
+            <span>Subtotal de productos</span>
             <span className="font-bold text-brand-ink">{formatCurrency(subtotal)}</span>
           </div>
           <div className="flex items-center justify-between text-sm text-slate-500">
@@ -327,21 +326,9 @@ export function CheckoutPageClient() {
 
         <div className="mt-6 space-y-2 border-t border-slate-100 pt-6">
           <div className="flex items-center justify-between text-base font-black text-brand-ink">
-            <span>{hasAlternativeTotals ? 'Total en efectivo' : 'Total'}</span>
+            <span>Total</span>
             <span>{formatCurrency(subtotal)}</span>
           </div>
-          {totals.transfer !== subtotal ? (
-            <div className="flex items-center justify-between text-sm text-slate-500">
-              <span>Por transferencia</span>
-              <span className="font-bold text-brand-ink">{formatCurrency(totals.transfer)}</span>
-            </div>
-          ) : null}
-          {totals.card !== subtotal ? (
-            <div className="flex items-center justify-between text-sm text-slate-500">
-              <span>Con tarjeta (Mercado Pago)</span>
-              <span className="font-bold text-brand-ink">{formatCurrency(totals.card)}</span>
-            </div>
-          ) : null}
         </div>
       </aside>
     </div>

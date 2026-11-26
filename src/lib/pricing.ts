@@ -8,10 +8,17 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   transfer: 'Transferencia',
 }
 
-export type PricedProduct = {
-  cardPrice?: number | string | null
-  price: number
-  transferPrice?: number | string | null
+/** Label for `price`: cash and transfer always share it. */
+export const BASE_PRICE_LABEL = 'Efectivo / Transferencia'
+
+export type InstallmentPlan = {
+  installmentAmount: number
+  installments: number
+}
+
+type InstallmentPlanInput = {
+  installmentAmount?: number | string | null
+  installments?: number | string | null
 }
 
 /** Rounds a money amount to cents. Every line total and order total goes through here. */
@@ -27,8 +34,7 @@ export function sumMoney(values: number[]): number {
   return roundMoney(values.reduce((sum, value) => sum + value, 0))
 }
 
-/** Returns the alternative price as a number, or null when the field is unset (null, undefined, empty or not finite). */
-export function normalizeOptionalPrice(value: number | string | null | undefined): number | null {
+function toFiniteNumber(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === '') {
     return null
   }
@@ -39,34 +45,26 @@ export function normalizeOptionalPrice(value: number | string | null | undefined
 }
 
 /**
- * `price` is the cash price. Transfer and card fall back to it when their own price is unset.
+ * Valid installment plans sorted by number of installments, keeping the first plan for each
+ * installment count. They are informational only: they are shown on the product page and
+ * never used to compute what a customer is charged.
  */
-export function getUnitPrice(product: PricedProduct, method: PaymentMethod): number {
-  if (method === 'card') {
-    return normalizeOptionalPrice(product.cardPrice) ?? product.price
-  }
-
-  if (method === 'transfer') {
-    return normalizeOptionalPrice(product.transferPrice) ?? product.price
-  }
-
-  return product.price
-}
-
-/** Methods whose price is explicitly set, always led by cash. Empty when no alternative price exists. */
-export function getConfiguredPaymentPrices(product: PricedProduct) {
-  const transferPrice = normalizeOptionalPrice(product.transferPrice)
-  const cardPrice = normalizeOptionalPrice(product.cardPrice)
-
-  if (transferPrice === null && cardPrice === null) {
-    return []
-  }
-
-  return [
-    { method: 'cash' as const, price: product.price },
-    ...(transferPrice !== null ? [{ method: 'transfer' as const, price: transferPrice }] : []),
-    ...(cardPrice !== null ? [{ method: 'card' as const, price: cardPrice }] : []),
-  ]
+export function getInstallmentPlans(plans: InstallmentPlanInput[] | null | undefined): InstallmentPlan[] {
+  return (plans ?? [])
+    .map((plan) => ({
+      installmentAmount: toFiniteNumber(plan.installmentAmount),
+      installments: toFiniteNumber(plan.installments),
+    }))
+    .filter(
+      (plan): plan is InstallmentPlan =>
+        plan.installments !== null &&
+        Number.isInteger(plan.installments) &&
+        plan.installments >= 2 &&
+        plan.installmentAmount !== null &&
+        plan.installmentAmount > 0,
+    )
+    .filter((plan, index, plans) => plans.findIndex((other) => other.installments === plan.installments) === index)
+    .sort((a, b) => a.installments - b.installments)
 }
 
 /** Whole-number discount percentage of `price` against `compareAtPrice`, or null when there is no real discount. */
@@ -80,24 +78,31 @@ export function getDiscountPercentage(price: number, compareAtPrice: number | nu
   return percentage > 0 ? percentage : null
 }
 
-/**
- * Payload field validator: an alternative price is optional, but when set it can never undercut the cash price.
- */
-export function validateAlternativePrice(value: unknown, cashPrice: unknown): true | string {
-  const normalized = normalizeOptionalPrice(value as number | string | null | undefined)
+/** Payload field validator for the number of installments of an installment plan. */
+export function validateInstallmentCount(value: unknown): true | string {
+  const count = toFiniteNumber(value as number | string | null | undefined)
 
-  if (normalized === null) {
-    return true
+  if (count === null) {
+    return 'La cantidad de cuotas es obligatoria'
   }
 
-  if (normalized < 0) {
-    return 'El precio debe ser mayor o igual a 0'
+  if (!Number.isInteger(count) || count < 2) {
+    return 'La cantidad de cuotas debe ser un número entero mayor o igual a 2'
   }
 
-  const cash = normalizeOptionalPrice(cashPrice as number | string | null | undefined)
+  return true
+}
 
-  if (cash !== null && normalized < cash) {
-    return 'El precio no puede ser menor al precio efectivo'
+/** Payload field validator for the amount of each installment of an installment plan. */
+export function validateInstallmentAmount(value: unknown): true | string {
+  const amount = toFiniteNumber(value as number | string | null | undefined)
+
+  if (amount === null) {
+    return 'El valor de la cuota es obligatorio'
+  }
+
+  if (amount <= 0) {
+    return 'El valor de la cuota debe ser mayor a 0'
   }
 
   return true
