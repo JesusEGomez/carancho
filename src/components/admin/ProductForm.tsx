@@ -471,7 +471,7 @@ export function ProductForm({ initialData }: ProductFormProps) {
                 label="Valor de cada cuota"
                 required
               >
-                <AdminInput min={0} type="number" {...register(`installmentPlans.${index}.installmentAmount`)} />
+                <AdminInput min={0} step={0.01} type="number" {...register(`installmentPlans.${index}.installmentAmount`)} />
               </AdminField>
               <button
                 className="rounded-full border border-slate-200 px-4 py-3 text-sm font-bold text-slate-500 hover:border-red-200 hover:text-red-600"
