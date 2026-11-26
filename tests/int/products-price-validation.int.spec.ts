@@ -1,43 +1,62 @@
 import { describe, expect, it } from 'vitest'
-import type { NumberField } from 'payload'
+import type { ArrayField, Field, NumberField } from 'payload'
 
 import { Products } from '@/collections/Products'
 
-function getNumberField(name: string) {
-  const field = Products.fields.find((candidate) => 'name' in candidate && candidate.name === name) as NumberField | undefined
+function findField(fields: Field[], name: string) {
+  return fields.find((candidate) => 'name' in candidate && candidate.name === name)
+}
 
-  if (!field?.validate) {
-    throw new Error(`Field ${name} has no validate function`)
+function getInstallmentPlansField() {
+  const field = findField(Products.fields, 'installmentPlans') as ArrayField | undefined
+
+  if (!field || field.type !== 'array') {
+    throw new Error('installmentPlans must be an array field')
   }
 
   return field
 }
 
-function validate(name: string, value: number | null | undefined, siblingData: Record<string, unknown>) {
-  const field = getNumberField(name)
-  const options = { siblingData }
+function validate(name: string, value: unknown) {
+  const field = findField(getInstallmentPlansField().fields, name) as NumberField | undefined
+
+  if (!field?.validate) {
+    throw new Error(`Field ${name} has no validate function`)
+  }
 
   const validateField = field.validate as unknown as (value: unknown, options: unknown) => true | string
 
-  return validateField(value, options)
+  return validateField(value, {})
 }
 
-describe('Products alternative price validation', () => {
-  it.each(['transferPrice', 'cardPrice'])('%s accepts an unset value', (name) => {
-    expect(validate(name, null, { price: 1000 })).toBe(true)
-    expect(validate(name, undefined, { price: 1000 })).toBe(true)
+describe('Products pricing fields', () => {
+  it('no longer has separate transfer or card prices', () => {
+    expect(findField(Products.fields, 'transferPrice')).toBeUndefined()
+    expect(findField(Products.fields, 'cardPrice')).toBeUndefined()
   })
 
-  it.each(['transferPrice', 'cardPrice'])('%s accepts values at or above the cash price from siblingData', (name) => {
-    expect(validate(name, 1000, { price: 1000 })).toBe(true)
-    expect(validate(name, 1500, { price: 1000 })).toBe(true)
+  it('stores informational installment plans with a required count and amount', () => {
+    const field = getInstallmentPlansField()
+
+    expect(field.label).toBe('Cuotas (informativo)')
+    expect(
+      field.fields.map((child) => ('name' in child ? [child.name, 'required' in child && child.required] : null)),
+    ).toEqual([
+      ['installments', true],
+      ['installmentAmount', true],
+    ])
   })
 
-  it.each(['transferPrice', 'cardPrice'])('%s rejects values below the cash price from siblingData', (name) => {
-    expect(validate(name, 900, { price: 1000 })).toBe('El precio no puede ser menor al precio efectivo')
+  it('validates the number of installments', () => {
+    expect(validate('installments', 3)).toBe(true)
+    expect(validate('installments', 1)).toBe('La cantidad de cuotas debe ser un número entero mayor o igual a 2')
+    expect(validate('installments', 2.5)).toBe('La cantidad de cuotas debe ser un número entero mayor o igual a 2')
+    expect(validate('installments', null)).toBe('La cantidad de cuotas es obligatoria')
   })
 
-  it('rejects negative values even without a cash price', () => {
-    expect(validate('cardPrice', -5, {})).toBe('El precio debe ser mayor o igual a 0')
+  it('validates the installment amount', () => {
+    expect(validate('installmentAmount', 4000)).toBe(true)
+    expect(validate('installmentAmount', 0)).toBe('El valor de la cuota debe ser mayor a 0')
+    expect(validate('installmentAmount', undefined)).toBe('El valor de la cuota es obligatorio')
   })
 })

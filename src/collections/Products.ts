@@ -4,10 +4,10 @@ import { isAdmin } from '@/access/isAdmin'
 import { createUniqueSlugHook } from '@/hooks/createUniqueSlugHook'
 import { revalidateProductRoutes } from '@/hooks/revalidateStorefront'
 import { publishedOrAdmin } from '@/access/publishedOrAdmin'
-import { validateAlternativePrice } from '@/lib/pricing'
+import { validateInstallmentAmount, validateInstallmentCount } from '@/lib/pricing'
 
-const validateAgainstCashPrice: NumberFieldSingleValidation = (value, { siblingData }) =>
-  validateAlternativePrice(value, (siblingData as { price?: number } | undefined)?.price)
+const validateInstallments: NumberFieldSingleValidation = (value) => validateInstallmentCount(value)
+const validateInstallmentValue: NumberFieldSingleValidation = (value) => validateInstallmentAmount(value)
 
 export const Products: CollectionConfig = {
   slug: 'products',
@@ -84,23 +84,42 @@ export const Products: CollectionConfig = {
     {
       name: 'price',
       type: 'number',
-      label: 'Precio efectivo',
+      label: 'Precio efectivo / transferencia',
+      admin: {
+        description: 'Es el precio que se cobra en efectivo, por transferencia y con Mercado Pago.',
+      },
       required: true,
       min: 0,
     },
     {
-      name: 'transferPrice',
-      type: 'number',
-      label: 'Precio transferencia',
-      min: 0,
-      validate: validateAgainstCashPrice,
-    },
-    {
-      name: 'cardPrice',
-      type: 'number',
-      label: 'Precio tarjeta',
-      min: 0,
-      validate: validateAgainstCashPrice,
+      name: 'installmentPlans',
+      type: 'array',
+      label: 'Cuotas (informativo)',
+      labels: {
+        plural: 'Planes de cuotas',
+        singular: 'Plan de cuotas',
+      },
+      admin: {
+        description:
+          'Solo se muestran en la página del producto. No cambian el monto que cobra Mercado Pago.',
+      },
+      fields: [
+        {
+          name: 'installments',
+          type: 'number',
+          label: 'Cantidad de cuotas',
+          required: true,
+          min: 2,
+          validate: validateInstallments,
+        },
+        {
+          name: 'installmentAmount',
+          type: 'number',
+          label: 'Valor de cada cuota',
+          required: true,
+          validate: validateInstallmentValue,
+        },
+      ],
     },
     {
       name: 'compareAtPrice',
