@@ -2,6 +2,7 @@ import crypto from 'crypto'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { CheckoutDomainError } from '@/lib/checkout-errors'
 import { buildMercadoPagoWebhookManifest } from '@/lib/mercadopago/shared'
 
 const paymentGet = vi.fn()
@@ -210,6 +211,68 @@ describe('handleMercadoPagoWebhook', () => {
     )
   })
 
+  it('alerts the admin when an approved payment cannot be fulfilled for lack of stock', async () => {
+    paymentGet.mockResolvedValue(buildPayment())
+    payloadFind.mockResolvedValue({ docs: [buildOrder()] })
+    payloadUpdate
+      .mockRejectedValueOnce(new CheckoutDomainError('OUT_OF_STOCK', 'Sin stock', 409))
+      .mockImplementationOnce(async ({ data, id }) => ({ ...buildOrder(), ...data, id }))
+
+    const result = await handle({ dataId: '555', type: 'payment' })
+
+    expect(result).toEqual({ processed: true })
+    expect(payloadUpdate).toHaveBeenCalledTimes(2)
+    expect(payloadUpdate.mock.calls[1][0].data).toMatchObject({ status: 'fulfillment_blocked' })
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('stock confirmation failed'),
+      expect.objectContaining({ orderId: 1 }),
+    )
+    await vi.waitFor(() => expect(notify).toHaveBeenCalledTimes(1))
+    expect(notify.mock.calls[0][0]).toMatchObject({
+      message: expect.stringContaining('#555'),
+      orderId: 1,
+      subject: expect.stringContaining('sin stock'),
+    })
+  })
+
+  it('keeps acknowledging a fulfillment_blocked payment when the admin alert fails', async () => {
+    paymentGet.mockResolvedValue(buildPayment())
+    payloadFind.mockResolvedValue({ docs: [buildOrder()] })
+    payloadUpdate
+      .mockRejectedValueOnce(new CheckoutDomainError('OUT_OF_STOCK', 'Sin stock', 409))
+      .mockImplementationOnce(async ({ data, id }) => ({ ...buildOrder(), ...data, id }))
+    getAdminNotifier.mockRejectedValue(new Error('smtp down'))
+
+    const result = await handle({ dataId: '555', type: 'payment' })
+
+    expect(result).toEqual({ processed: true })
+    await vi.waitFor(() =>
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('fulfillment blocked alert'),
+        expect.objectContaining({ orderId: 1 }),
+      ),
+    )
+  })
+
+  it('does not alert again when a redelivered webhook hits an already blocked order', async () => {
+    paymentGet.mockResolvedValue(buildPayment())
+    payloadFind.mockResolvedValue({
+      docs: [buildOrder({ paymentStatus: 'approved', status: 'fulfillment_blocked' })],
+    })
+    payloadUpdate
+      .mockRejectedValueOnce(new CheckoutDomainError('OUT_OF_STOCK', 'Sin stock', 409))
+      .mockImplementationOnce(async ({ data, id }) => ({ ...buildOrder(), ...data, id }))
+
+    const result = await handle({ dataId: '555', type: 'payment' })
+
+    expect(result).toEqual({ processed: true })
+    expect(payloadUpdate.mock.calls[1][0].data).toMatchObject({ status: 'fulfillment_blocked' })
+    // Give a fire-and-forget alert the chance to run before asserting it never did.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(getAdminNotifier).not.toHaveBeenCalled()
+    expect(notify).not.toHaveBeenCalled()
+  })
+
   it('acknowledges payments that Mercado Pago reports as not found with 200', async () => {
     paymentGet.mockRejectedValue({ error: 'not_found', message: 'Payment not found', status: 404 })
 
@@ -296,11 +359,241 @@ describe('createMercadoPagoCheckout', () => {
     expect(body.payer.phone).toEqual({ number: '1155551111' })
   })
 
-  it('always prices Mercado Pago orders with the card price', async () => {
+  it('records Mercado Pago orders as card payments priced at the base price', async () => {
     const { createMercadoPagoCheckout } = await import('@/lib/mercadopago/server')
 
     await createMercadoPagoCheckout({} as Parameters<typeof createMercadoPagoCheckout>[0])
 
     expect(buildValidatedOrderData).toHaveBeenCalledWith({}, 'card')
+  })
+})
+
+function stubWebhookEnvironment() {
+  vi.stubEnv('MERCADOPAGO_ACCESS_TOKEN', 'test-access-token')
+  vi.stubEnv('MERCADOPAGO_PUBLIC_BASE_URL', 'https://example.com')
+  vi.stubEnv('MERCADOPAGO_WEBHOOK_SECRET', SECRET)
+  paymentGet.mockReset()
+  merchantOrderGet.mockReset()
+  payloadFind.mockReset()
+  payloadUpdate.mockReset()
+  notify.mockReset()
+  notify.mockResolvedValue({ delivered: true })
+  getAdminNotifier.mockReset()
+  getAdminNotifier.mockResolvedValue({ notify })
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  vi.spyOn(console, 'info').mockImplementation(() => {})
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+}
+
+describe('Mercado Pago payment status matrix', () => {
+  beforeEach(() => {
+    stubWebhookEnvironment()
+    payloadUpdate.mockImplementation(async ({ data, id }) => ({ ...buildOrder(), ...data, id }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+  })
+
+  type Expected = { paymentStatus: string; status: string } | 'no_update'
+
+  it.each<[string, string, string, Expected]>([
+    // Unpaid orders follow Mercado Pago.
+    ['pending_payment', 'pending', 'approved', { paymentStatus: 'approved', status: 'confirmed' }],
+    ['pending_payment', 'pending', 'pending', { paymentStatus: 'pending', status: 'pending_payment' }],
+    ['pending_payment', 'pending', 'in_process', { paymentStatus: 'pending', status: 'pending_payment' }],
+    ['pending_payment', 'pending', 'rejected', { paymentStatus: 'rejected', status: 'cancelled' }],
+    ['pending_payment', 'pending', 'cancelled', { paymentStatus: 'cancelled', status: 'cancelled' }],
+    // A new approved attempt after a rejected one confirms the order.
+    ['cancelled', 'rejected', 'approved', { paymentStatus: 'approved', status: 'confirmed' }],
+    // Late or stale notifications never downgrade a paid order.
+    ['confirmed', 'approved', 'pending', 'no_update'],
+    ['confirmed', 'approved', 'in_process', 'no_update'],
+    ['confirmed', 'approved', 'in_mediation', 'no_update'],
+    ['confirmed', 'approved', 'rejected', 'no_update'],
+    ['confirmed', 'approved', 'cancelled', 'no_update'],
+    ['fulfillment_blocked', 'approved', 'pending', 'no_update'],
+    // Genuine post-approval states do move a paid order.
+    ['confirmed', 'approved', 'refunded', { paymentStatus: 'refunded', status: 'cancelled' }],
+    ['confirmed', 'approved', 'charged_back', { paymentStatus: 'charged_back', status: 'cancelled' }],
+    ['fulfillment_blocked', 'approved', 'refunded', { paymentStatus: 'refunded', status: 'cancelled' }],
+    // A redelivered approval rewrites the same state (side effects are covered below).
+    ['confirmed', 'approved', 'approved', { paymentStatus: 'approved', status: 'confirmed' }],
+  ])('order %s/%s + payment %s', async (orderStatus, orderPaymentStatus, incoming, expected) => {
+    paymentGet.mockResolvedValue(buildPayment({ status: incoming, status_detail: null }))
+    payloadFind.mockResolvedValue({ docs: [buildOrder({ paymentStatus: orderPaymentStatus, status: orderStatus })] })
+
+    const result = await handle({ dataId: '555', type: 'payment' })
+
+    expect(result).toEqual({ processed: true })
+
+    if (expected === 'no_update') {
+      expect(payloadUpdate).not.toHaveBeenCalled()
+      return
+    }
+
+    expect(payloadUpdate).toHaveBeenCalledTimes(1)
+    expect(payloadUpdate.mock.calls[0][0]).toMatchObject({
+      collection: 'orders',
+      data: { ...expected, providerPaymentId: '555', providerRawStatus: incoming },
+      id: 1,
+    })
+  })
+})
+
+type StoredOrder = ReturnType<typeof buildOrder> & { stockApplied?: boolean }
+type StoredProduct = { id: number; name: string; status: 'published'; stock: number }
+type FakeUpdateArgs = { collection: string; context?: Record<string, unknown>; data: Record<string, unknown>; id: number }
+
+/**
+ * Minimal stand-in for Payload's update pipeline on orders: runs the real order hooks
+ * (beforeChange stock check, afterChange stock sync and admin alert) against in-memory
+ * state and rolls everything back when a hook throws, like a database transaction.
+ *
+ * Limits:
+ * - Serial only: calls never interleave, so it cannot expose concurrency or lost-update races.
+ * - The rollback is hand-written (order + product stock snapshot), not a real transaction.
+ * - The doc shape is approximated: `data` is shallow-merged over the stored order, without
+ *   Payload's field hooks, validation, defaults or relationship population.
+ */
+async function createStatefulPayload(initialOrder: StoredOrder, initialProducts: StoredProduct[]) {
+  // Imported lazily: a static import would evaluate the hoisted @/lib/notifications mock
+  // before its backing vi.fn() is initialised.
+  const { notifyAdminAfterOrderChange } = await import('@/hooks/orderNotificationHooks')
+  const { syncOrderStockAfterChange, validateOrderStockBeforeChange } = await import('@/hooks/orderStockHooks')
+  let order: Record<string, unknown> = { ...initialOrder }
+  const products = new Map(initialProducts.map((product) => [product.id, { ...product }]))
+
+  const fakePayload = {
+    findByID: async ({ id }: { id: number }) => {
+      const product = products.get(id)
+      return product ? { ...product } : null
+    },
+    update: async (args: FakeUpdateArgs): Promise<Record<string, unknown>> => {
+      if (args.collection === 'products') {
+        Object.assign(products.get(args.id)!, args.data)
+        return { ...products.get(args.id) }
+      }
+
+      const previousDoc = { ...order }
+      const stockSnapshot = new Map([...products].map(([id, stored]) => [id, stored.stock]))
+      const context = args.context ?? {}
+      const req = { payload: fakePayload }
+
+      try {
+        const data = await validateOrderStockBeforeChange({
+          context,
+          data: { ...args.data },
+          operation: 'update',
+          originalDoc: previousDoc,
+          req,
+        } as unknown as Parameters<typeof validateOrderStockBeforeChange>[0])
+        order = { ...previousDoc, ...data }
+
+        for (const hook of [syncOrderStockAfterChange, notifyAdminAfterOrderChange]) {
+          await hook({
+            context,
+            doc: { ...order },
+            operation: 'update',
+            previousDoc,
+            req,
+          } as unknown as Parameters<typeof hook>[0])
+        }
+      } catch (error) {
+        order = previousDoc
+        for (const [id, stock] of stockSnapshot) {
+          products.get(id)!.stock = stock
+        }
+        throw error
+      }
+
+      return { ...order }
+    },
+  }
+
+  return {
+    currentOrder: () => ({ ...order }),
+    stockOf: (id: number) => products.get(id)?.stock,
+    update: fakePayload.update,
+  }
+}
+
+describe('Mercado Pago webhook side effects', () => {
+  const product = { id: 1, name: 'Caña', status: 'published' as const, stock: 5 }
+  let state: Awaited<ReturnType<typeof createStatefulPayload>>
+
+  async function useOrderWithQuantity(quantity: number) {
+    state = await createStatefulPayload(buildOrder({ items: [{ product: 1, quantity }], stockApplied: false }), [product])
+    payloadUpdate.mockImplementation(state.update)
+    payloadFind.mockImplementation(async () => ({ docs: [state.currentOrder()] }))
+  }
+
+  beforeEach(async () => {
+    stubWebhookEnvironment()
+    await useOrderWithQuantity(2)
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+  })
+
+  function purchaseAlerts() {
+    return notify.mock.calls.filter(([alert]) => String(alert.message).startsWith('Nueva compra confirmada'))
+  }
+
+  async function deliver(status: string) {
+    paymentGet.mockResolvedValue(buildPayment({ status }))
+    return handle({ dataId: '555', type: 'payment' })
+  }
+
+  it('applies stock and the admin alert once when the approval is delivered twice', async () => {
+    await expect(deliver('approved')).resolves.toEqual({ processed: true })
+    await expect(deliver('approved')).resolves.toEqual({ processed: true })
+
+    expect(state.currentOrder()).toMatchObject({ paymentStatus: 'approved', status: 'confirmed', stockApplied: true })
+    expect(state.stockOf(1)).toBe(3)
+    expect(purchaseAlerts()).toHaveLength(1)
+  })
+
+  it('keeps a confirmed order and its stock when a late pending notification arrives', async () => {
+    await deliver('pending')
+    await deliver('approved')
+    await deliver('in_process')
+
+    expect(state.currentOrder()).toMatchObject({ paymentStatus: 'approved', status: 'confirmed' })
+    expect(state.stockOf(1)).toBe(3)
+    expect(purchaseAlerts()).toHaveLength(1)
+  })
+
+  it('blocks fulfillment without touching stock when the approval exceeds the stock', async () => {
+    await useOrderWithQuantity(6)
+
+    await deliver('approved')
+
+    expect(state.currentOrder()).toMatchObject({ paymentStatus: 'approved', status: 'fulfillment_blocked' })
+    expect(state.stockOf(1)).toBe(5)
+    expect(purchaseAlerts()).toHaveLength(0)
+  })
+
+  // Pins the current behaviour so the it.fails block below can only fail on the restock assertion.
+  it.each(['refunded', 'charged_back'])('cancels a confirmed order when its payment is %s', async (status) => {
+    await deliver('approved')
+    await deliver(status)
+
+    expect(state.currentOrder()).toMatchObject({ paymentStatus: status, status: 'cancelled' })
+    expect(state.stockOf(1)).toBe(3)
+    expect(purchaseAlerts()).toHaveLength(1)
+  })
+
+  // Known bug: stock is not restored on cancel/refund — see review 2026-11-27
+  // BUG (reported, not fixed): a refund or chargeback cancels the order but the units
+  // deducted on approval are never put back. See order-stock-hooks.int.spec.ts.
+  it.fails.each(['refunded', 'charged_back'])('restores stock when an approved payment is %s', async (status) => {
+    await deliver('approved')
+    await deliver(status)
+
+    expect(state.stockOf(1)).toBe(5)
   })
 })

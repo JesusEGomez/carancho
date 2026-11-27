@@ -18,10 +18,14 @@ export function PriceRangeFilter({ maxValue, value }: PriceRangeFilterProps) {
   const searchParams = useSearchParams()
   const [, startTransition] = useTransition()
   const [draftValue, setDraftValue] = useState(value)
+  const [syncedValue, setSyncedValue] = useState(value)
 
-  useEffect(() => {
+  // Reset the draft when the URL-driven value changes (e.g. navigating between filter states).
+  // Adjusting state during render avoids the extra commit an effect would cause.
+  if (value !== syncedValue) {
+    setSyncedValue(value)
     setDraftValue(value)
-  }, [value])
+  }
 
   const progress = useMemo(() => {
     if (maxValue <= 0) {
