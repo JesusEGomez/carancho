@@ -234,16 +234,6 @@ export const Orders: CollectionConfig = {
           min: 0,
         },
         {
-          name: 'cashUnitPrice',
-          type: 'number',
-          min: 0,
-        },
-        {
-          name: 'transferUnitPrice',
-          type: 'number',
-          min: 0,
-        },
-        {
           name: 'lineTotal',
           type: 'number',
           required: true,

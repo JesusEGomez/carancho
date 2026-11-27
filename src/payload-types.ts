@@ -200,9 +200,20 @@ export interface Product {
   status: 'published' | 'draft';
   shortDescription: string;
   description: string;
+  /**
+   * Es el precio que se cobra en efectivo, por transferencia y con Mercado Pago.
+   */
   price: number;
-  transferPrice?: number | null;
-  cardPrice?: number | null;
+  /**
+   * Solo se muestran en la página del producto. No cambian el monto que cobra Mercado Pago.
+   */
+  installmentPlans?:
+    | {
+        installments: number;
+        installmentAmount: number;
+        id?: string | null;
+      }[]
+    | null;
   compareAtPrice?: number | null;
   stock: number;
   isFeatured?: boolean | null;
@@ -273,8 +284,6 @@ export interface Order {
     productSlug: string;
     quantity: number;
     unitPrice: number;
-    cashUnitPrice?: number | null;
-    transferUnitPrice?: number | null;
     lineTotal: number;
     id?: string | null;
   }[];
@@ -441,8 +450,13 @@ export interface ProductsSelect<T extends boolean = true> {
   shortDescription?: T;
   description?: T;
   price?: T;
-  transferPrice?: T;
-  cardPrice?: T;
+  installmentPlans?:
+    | T
+    | {
+        installments?: T;
+        installmentAmount?: T;
+        id?: T;
+      };
   compareAtPrice?: T;
   stock?: T;
   isFeatured?: T;
@@ -513,8 +527,6 @@ export interface OrdersSelect<T extends boolean = true> {
         productSlug?: T;
         quantity?: T;
         unitPrice?: T;
-        cashUnitPrice?: T;
-        transferUnitPrice?: T;
         lineTotal?: T;
         id?: T;
       };

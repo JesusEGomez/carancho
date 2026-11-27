@@ -27,8 +27,7 @@ export type ProductRecord = {
   shortDescription: string
   description: string
   price: number
-  transferPrice?: number | null
-  cardPrice?: number | null
+  installmentPlans?: { id?: string | null; installmentAmount: number; installments: number }[] | null
   compareAtPrice?: number | null
   stock: number
   status: 'published' | 'draft'
@@ -69,8 +68,6 @@ export type OrderItemRecord = {
   productSlug: string
   quantity: number
   unitPrice: number
-  cashUnitPrice?: number | null
-  transferUnitPrice?: number | null
   lineTotal: number
 }
 

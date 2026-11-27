@@ -37,8 +37,8 @@ const customer = {
   deliveryNotes: '',
 }
 
-const CANA = { cardPrice: 1300, id: 1, name: 'Caña', price: 1000, slug: 'cana', status: 'published', stock: 5, transferPrice: 1100 }
-const REEL = { cardPrice: null, id: 2, name: 'Reel', price: 500, slug: 'reel', status: 'published', stock: 2, transferPrice: null }
+const CANA = { id: 1, name: 'Caña', price: 1000, slug: 'cana', status: 'published', stock: 5 }
+const REEL = { id: 2, name: 'Reel', price: 500, slug: 'reel', status: 'published', stock: 2 }
 
 function postRaw(body: string) {
   return import('@/app/api/checkout/create/route').then(({ POST }) =>
@@ -153,7 +153,7 @@ describe('POST /api/checkout/create', () => {
     expect(payloadCreate).toHaveBeenCalledTimes(1)
   })
 
-  it('prices the order from the database and ignores client-sent prices, totals and state', async () => {
+  it('prices the order from the database base price and ignores client-sent prices, payment method, totals and state', async () => {
     const response = await post({
       customer,
       items: [
@@ -175,24 +175,24 @@ describe('POST /api/checkout/create', () => {
       preferenceId: 'pref-1',
     })
 
-    // Mercado Pago charges the card price; REEL has no card price and falls back to cash.
+    // Mercado Pago charges the base price; 'card' only records how the order is paid.
     const { data } = payloadCreate.mock.calls[0][0]
     expect(data).toMatchObject({
       paymentMethod: 'card',
       paymentProvider: 'mercadopago',
       paymentStatus: 'pending',
       status: 'pending_payment',
-      subtotal: 3100,
-      total: 3100,
+      subtotal: 2500,
+      total: 2500,
     })
     expect(data).not.toHaveProperty('stockApplied')
     expect(data.items).toEqual([
-      expect.objectContaining({ lineTotal: 2600, product: CANA.id, quantity: 2, unitPrice: 1300 }),
+      expect.objectContaining({ lineTotal: 2000, product: CANA.id, quantity: 2, unitPrice: 1000 }),
       expect.objectContaining({ lineTotal: 500, product: REEL.id, quantity: 1, unitPrice: 500 }),
     ])
 
     const preferenceItems = preferenceCreate.mock.calls[0][0].body.items
-    expect(preferenceItems.map((item: { unit_price: number }) => item.unit_price)).toEqual([1300, 500])
+    expect(preferenceItems.map((item: { unit_price: number }) => item.unit_price)).toEqual([1000, 500])
     expect(payloadUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ data: { providerPreferenceId: 'pref-1' }, id: 42 }),
     )

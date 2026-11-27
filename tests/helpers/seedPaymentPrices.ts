@@ -16,12 +16,14 @@ export const paymentPriceProducts = {
     slug: 'e2e-reel-solo-efectivo',
   },
   multiPrice: {
-    cardPrice: 12000,
     compareAtPrice: 16000,
+    installmentPlans: [
+      { installmentAmount: 4000, installments: 3 },
+      { installmentAmount: 2200, installments: 6 },
+    ],
     name: 'E2E Cana multi precio',
     price: 10000,
     slug: 'e2e-cana-multi-precio',
-    transferPrice: 10500,
   },
 } as const
 
@@ -100,24 +102,22 @@ export async function seedPaymentPriceCatalog(): Promise<SeededPaymentProducts> 
 
   const cashOnly = await upsertProduct({
     ...baseProduct,
-    cardPrice: null,
     compareAtPrice: null,
+    installmentPlans: [],
     name: paymentPriceProducts.cashOnly.name,
     price: paymentPriceProducts.cashOnly.price,
     showInOffers: false,
     slug: paymentPriceProducts.cashOnly.slug,
-    transferPrice: null,
   })
 
   const multiPrice = await upsertProduct({
     ...baseProduct,
-    cardPrice: paymentPriceProducts.multiPrice.cardPrice,
     compareAtPrice: paymentPriceProducts.multiPrice.compareAtPrice,
+    installmentPlans: paymentPriceProducts.multiPrice.installmentPlans.map((plan) => ({ ...plan })),
     name: paymentPriceProducts.multiPrice.name,
     price: paymentPriceProducts.multiPrice.price,
     showInOffers: true,
     slug: paymentPriceProducts.multiPrice.slug,
-    transferPrice: paymentPriceProducts.multiPrice.transferPrice,
   })
 
   return { cashOnly: cashOnly as Product, multiPrice: multiPrice as Product }

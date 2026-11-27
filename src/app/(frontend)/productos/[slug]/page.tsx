@@ -9,7 +9,7 @@ import { ProductPurchasePanel } from '@/components/store/ProductPurchasePanel'
 import { RelatedProductsCarousel } from '@/components/store/RelatedProductsCarousel'
 import { PaymentMethodPrices } from '@/components/store/PaymentMethodPrices'
 import { formatCurrency } from '@/lib/formatCurrency'
-import { getConfiguredPaymentPrices, getDiscountPercentage } from '@/lib/pricing'
+import { BASE_PRICE_LABEL, getDiscountPercentage, getInstallmentPlans } from '@/lib/pricing'
 import { getProductStockPresentation } from '@/lib/product-stock'
 import { getProductBySlug } from '@/lib/store'
 import { absoluteUrl, serializeJsonLd } from '@/lib/seo'
@@ -81,7 +81,7 @@ export default async function ProductDetailPage({ params }: Props) {
   )
   const stockPresentation = getProductStockPresentation(product.stock)
   const discountPercentage = getDiscountPercentage(product.price, product.compareAtPrice)
-  const hasAlternativePrices = getConfiguredPaymentPrices(product).length > 0
+  const hasInstallmentPlans = getInstallmentPlans(product.installmentPlans).length > 0
   const productUrl = absoluteUrl(`/productos/${product.slug}`)
   const productImages = gallery
     .map((image) => image.url)
@@ -167,8 +167,8 @@ export default async function ProductDetailPage({ params }: Props) {
             <p className="mt-4 max-w-xl text-base leading-7 text-slate-500">{product.shortDescription}</p>
 
             <div className="mt-6">
-              {hasAlternativePrices ? (
-                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Precio en efectivo</p>
+              {hasInstallmentPlans ? (
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">{BASE_PRICE_LABEL}</p>
               ) : null}
               <div className="mt-1 flex flex-wrap items-end gap-3">
                 <p className="text-5xl font-black text-brand-ink">{formatCurrency(product.price)}</p>
@@ -188,10 +188,8 @@ export default async function ProductDetailPage({ params }: Props) {
                 featuredImageUrl: product.featuredImage?.url,
                 id: product.id,
                 name: product.name,
-                cardPrice: product.cardPrice,
                 price: product.price,
                 slug: product.slug,
-                transferPrice: product.transferPrice,
                 stock: product.stock,
               }}
             />

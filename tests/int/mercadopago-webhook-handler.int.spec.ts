@@ -359,7 +359,7 @@ describe('createMercadoPagoCheckout', () => {
     expect(body.payer.phone).toEqual({ number: '1155551111' })
   })
 
-  it('always prices Mercado Pago orders with the card price', async () => {
+  it('records Mercado Pago orders as card payments priced at the base price', async () => {
     const { createMercadoPagoCheckout } = await import('@/lib/mercadopago/server')
 
     await createMercadoPagoCheckout({} as Parameters<typeof createMercadoPagoCheckout>[0])
