@@ -1,4 +1,4 @@
-import type { CollectionAfterChangeHook, CollectionBeforeChangeHook } from 'payload'
+import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest } from 'payload'
 
 import { createOutOfStockError, createUnavailableProductError } from '@/lib/checkout-errors'
 
@@ -19,8 +19,44 @@ function getProductId(product: OrderItemInput['product']) {
   return null
 }
 
+/** Sums the quantities per product, skipping lines without a product or a positive quantity. */
+function mergeOrderItems(items: OrderItemInput[]) {
+  const mergedItems = new Map<number, number>()
+
+  for (const item of items) {
+    const productId = getProductId(item.product)
+    const quantity = item.quantity ?? 0
+
+    if (!productId || quantity <= 0) {
+      continue
+    }
+
+    mergedItems.set(productId, (mergedItems.get(productId) ?? 0) + quantity)
+  }
+
+  return mergedItems
+}
+
 function shouldSyncStock(status: unknown, stockApplied: unknown) {
   return status === 'confirmed' && stockApplied !== true
+}
+
+function shouldRestoreStock(status: unknown, stockApplied: unknown) {
+  return status === 'cancelled' && stockApplied === true
+}
+
+async function setStockApplied(req: PayloadRequest, orderId: number, stockApplied: boolean) {
+  await req.payload.update({
+    collection: 'orders',
+    id: orderId,
+    context: {
+      skipStockSync: true,
+    },
+    data: {
+      stockApplied,
+    },
+    req,
+  })
 }
 
 export const validateOrderStockBeforeChange: CollectionBeforeChangeHook = async ({
@@ -40,20 +76,7 @@ export const validateOrderStockBeforeChange: CollectionBeforeChangeHook = async 
     return data
   }
 
-  const mergedItems = new Map<number, number>()
-
-  for (const item of data.items as OrderItemInput[]) {
-    const productId = getProductId(item.product)
-    const quantity = item.quantity ?? 0
-
-    if (!productId || quantity <= 0) {
-      continue
-    }
-
-    mergedItems.set(productId, (mergedItems.get(productId) ?? 0) + quantity)
-  }
-
-  for (const [productId, quantity] of mergedItems.entries()) {
+  for (const [productId, quantity] of mergeOrderItems(data.items as OrderItemInput[]).entries()) {
     const product = await req.payload.findByID({
       collection: 'products',
       depth: 0,
@@ -73,6 +96,40 @@ export const validateOrderStockBeforeChange: CollectionBeforeChangeHook = async 
   return data
 }
 
+/**
+ * Puts the units of a cancelled order back. `stockApplied` is the idempotency guard:
+ * it is cleared in the same transaction, so a replayed cancel, refund or chargeback
+ * finds it false and restocks nothing.
+ */
+async function restoreOrderStock(req: PayloadRequest, orderId: number, items: OrderItemInput[]) {
+  for (const [productId, quantity] of mergeOrderItems(items).entries()) {
+    const product = await req.payload.findByID({
+      collection: 'products',
+      depth: 0,
+      disableErrors: true,
+      id: productId,
+      req,
+    })
+
+    // A product deleted after the sale has no stock to restore; failing here would
+    // roll back the cancellation itself.
+    if (!product) {
+      continue
+    }
+
+    await req.payload.update({
+      collection: 'products',
+      id: productId,
+      data: {
+        stock: product.stock + quantity,
+      },
+      req,
+    })
+  }
+
+  await setStockApplied(req, orderId, false)
+}
+
 export const syncOrderStockAfterChange: CollectionAfterChangeHook = async ({
   context,
   doc,
@@ -80,7 +137,16 @@ export const syncOrderStockAfterChange: CollectionAfterChangeHook = async ({
   previousDoc,
   req,
 }) => {
-  if (context.skipStockSync || !shouldSyncStock(doc.status, doc.stockApplied) || !Array.isArray(doc.items) || doc.items.length === 0) {
+  if (context.skipStockSync || !Array.isArray(doc.items) || doc.items.length === 0) {
+    return doc
+  }
+
+  if (shouldRestoreStock(doc.status, doc.stockApplied)) {
+    await restoreOrderStock(req, doc.id, doc.items as OrderItemInput[])
+    return { ...doc, stockApplied: false }
+  }
+
+  if (!shouldSyncStock(doc.status, doc.stockApplied)) {
     return doc
   }
 
@@ -90,20 +156,7 @@ export const syncOrderStockAfterChange: CollectionAfterChangeHook = async ({
     return doc
   }
 
-  const mergedItems = new Map<number, number>()
-
-  for (const item of doc.items as OrderItemInput[]) {
-    const productId = getProductId(item.product)
-    const quantity = item.quantity ?? 0
-
-    if (!productId || quantity <= 0) {
-      continue
-    }
-
-    mergedItems.set(productId, (mergedItems.get(productId) ?? 0) + quantity)
-  }
-
-  for (const [productId, quantity] of mergedItems.entries()) {
+  for (const [productId, quantity] of mergeOrderItems(doc.items as OrderItemInput[]).entries()) {
     const product = await req.payload.findByID({
       collection: 'products',
       depth: 0,
@@ -125,17 +178,7 @@ export const syncOrderStockAfterChange: CollectionAfterChangeHook = async ({
     })
   }
 
-  await req.payload.update({
-    collection: 'orders',
-    id: doc.id,
-    context: {
-      skipStockSync: true,
-    },
-    data: {
-      stockApplied: true,
-    },
-    req,
-  })
+  await setStockApplied(req, doc.id, true)
 
   return doc
 }

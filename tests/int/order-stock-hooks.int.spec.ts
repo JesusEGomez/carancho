@@ -201,13 +201,9 @@ describe('syncOrderStockAfterChange', () => {
     expect(fake.payload.update).not.toHaveBeenCalled()
   })
 
-  // Known bug: stock is not restored on cancel/refund — see review 2026-11-27
-  // BUG (reported, not fixed): nothing restores stock when a stock-applied order is
-  // cancelled, refunded or charged back. syncOrderStockAfterChange only handles the
-  // transition into `confirmed`, and Mercado Pago refunds/chargebacks move a confirmed
-  // order to `cancelled` (see mapMercadoPagoPayment), so the units stay deducted.
-  // Flip these to `it` once restocking is implemented.
-  it.fails.each([
+  // Mercado Pago refunds and chargebacks move a confirmed order to `cancelled`
+  // (see mapMercadoPagoPayment), so they share the admin-cancel restock path.
+  it.each([
     ['cancelled by the admin', { status: 'cancelled' }],
     ['refunded in Mercado Pago', { paymentStatus: 'refunded', status: 'cancelled' }],
     ['charged back in Mercado Pago', { paymentStatus: 'charged_back', status: 'cancelled' }],
@@ -218,8 +214,85 @@ describe('syncOrderStockAfterChange', () => {
       products: [{ ...CANA, stock: 8 }],
     })
 
+    await expect(result).resolves.toMatchObject({ id: 7, stockApplied: false })
+    expect(fake.stockOf(CANA.id)).toBe(10)
+    expect(fake.orderUpdates()).toEqual([
+      expect.objectContaining({ context: { skipStockSync: true }, data: { stockApplied: false }, id: 7 }),
+    ])
+  })
+
+  it('restocks only once when a cancellation is replayed', async () => {
+    const fake = createFakePayload([{ ...CANA, stock: 8 }])
+    const cancel = (doc: FakeOrder, previousDoc: Partial<FakeOrder>) =>
+      syncOrderStockAfterChange({
+        context: {},
+        doc,
+        operation: 'update',
+        previousDoc,
+        req: { payload: fake.payload },
+      } as unknown as Parameters<typeof syncOrderStockAfterChange>[0])
+
+    const first = await cancel(buildOrder({ status: 'cancelled', stockApplied: true }), {
+      status: 'confirmed',
+      stockApplied: true,
+    })
+    // The replay sees the order as the first cancellation left it.
+    await cancel({ ...first, status: 'cancelled' } as FakeOrder, { status: 'cancelled', stockApplied: false })
+
+    expect(fake.stockOf(CANA.id)).toBe(10)
+    expect(fake.productUpdates()).toHaveLength(1)
+    expect(fake.orderUpdates()).toHaveLength(1)
+  })
+
+  it('restores every product of a multi-item order, merging repeated lines', async () => {
+    const { fake, result } = await runAfterChange({
+      doc: buildOrder({
+        items: [
+          { product: CANA.id, quantity: 2 },
+          { product: { id: REEL.id }, quantity: 1 },
+          { product: CANA.id, quantity: 3 },
+        ],
+        status: 'cancelled',
+        stockApplied: true,
+      }),
+      previousDoc: { status: 'confirmed', stockApplied: true },
+    })
+
+    await result
+    expect(fake.stockOf(CANA.id)).toBe(CANA.stock + 5)
+    expect(fake.stockOf(REEL.id)).toBe(REEL.stock + 1)
+    expect(fake.productUpdates()).toHaveLength(2)
+  })
+
+  it('skips deleted products when restocking and still clears stockApplied', async () => {
+    const { fake, result } = await runAfterChange({
+      doc: buildOrder({
+        items: [
+          { product: 99, quantity: 1 },
+          { product: CANA.id, quantity: 2 },
+        ],
+        status: 'cancelled',
+        stockApplied: true,
+      }),
+      previousDoc: { status: 'confirmed', stockApplied: true },
+      products: [{ ...CANA, stock: 8 }],
+    })
+
     await result
     expect(fake.stockOf(CANA.id)).toBe(10)
+    expect(fake.productUpdates()).toHaveLength(1)
+    expect(fake.orderUpdates()).toEqual([expect.objectContaining({ data: { stockApplied: false } })])
+  })
+
+  it('does not restock on the internal stockApplied write-back', async () => {
+    const { fake, result } = await runAfterChange({
+      context: { skipStockSync: true },
+      doc: buildOrder({ status: 'cancelled', stockApplied: true }),
+      previousDoc: { status: 'confirmed', stockApplied: true },
+    })
+
+    await result
+    expect(fake.payload.update).not.toHaveBeenCalled()
   })
 })
 
