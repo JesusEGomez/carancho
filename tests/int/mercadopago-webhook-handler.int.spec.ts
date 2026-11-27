@@ -577,23 +577,27 @@ describe('Mercado Pago webhook side effects', () => {
     expect(purchaseAlerts()).toHaveLength(0)
   })
 
-  // Pins the current behaviour so the it.fails block below can only fail on the restock assertion.
   it.each(['refunded', 'charged_back'])('cancels a confirmed order when its payment is %s', async (status) => {
     await deliver('approved')
     await deliver(status)
 
-    expect(state.currentOrder()).toMatchObject({ paymentStatus: status, status: 'cancelled' })
-    expect(state.stockOf(1)).toBe(3)
+    expect(state.currentOrder()).toMatchObject({ paymentStatus: status, status: 'cancelled', stockApplied: false })
     expect(purchaseAlerts()).toHaveLength(1)
   })
 
-  // Known bug: stock is not restored on cancel/refund — see review 2026-11-27
-  // BUG (reported, not fixed): a refund or chargeback cancels the order but the units
-  // deducted on approval are never put back. See order-stock-hooks.int.spec.ts.
-  it.fails.each(['refunded', 'charged_back'])('restores stock when an approved payment is %s', async (status) => {
+  it.each(['refunded', 'charged_back'])('restores stock when an approved payment is %s', async (status) => {
     await deliver('approved')
     await deliver(status)
 
+    expect(state.stockOf(1)).toBe(5)
+  })
+
+  it.each(['refunded', 'charged_back'])('restores stock only once when the %s notification is redelivered', async (status) => {
+    await deliver('approved')
+    await deliver(status)
+    await deliver(status)
+
+    expect(state.currentOrder()).toMatchObject({ status: 'cancelled', stockApplied: false })
     expect(state.stockOf(1)).toBe(5)
   })
 })
