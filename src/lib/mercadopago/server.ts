@@ -126,6 +126,31 @@ function notifyAdminOfPaymentMismatch(
     })
 }
 
+function notifyAdminOfFulfillmentBlocked(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  details: { orderId: number; paymentId?: string },
+) {
+  // Fire-and-forget: an alert failure must never affect payment processing.
+  void getAdminNotifier(payload)
+    .then((notifier) =>
+      notifier.notify({
+        message: [
+          'Pago de Mercado Pago aprobado pero sin stock para confirmar el pedido',
+          `Pedido #${details.orderId}`,
+          `Pago #${details.paymentId ?? 'desconocido'} - el cliente ya pagó; revisar stock o reembolsar`,
+        ].join('\n'),
+        orderId: details.orderId,
+        subject: `Pedido pagado sin stock - Pedido #${details.orderId}`,
+      }),
+    )
+    .catch((error) => {
+      console.error('Failed to send Mercado Pago fulfillment blocked alert', {
+        message: error instanceof Error ? error.message : 'unknown_error',
+        orderId: details.orderId,
+      })
+    })
+}
+
 // The SDK rethrows the Mercado Pago JSON error body, e.g. { error: 'not_found', status: 404 }.
 function isMercadoPagoNotFoundError(error: unknown) {
   return (
@@ -225,7 +250,7 @@ async function applyPaymentStateToOrder(args: {
         rawStatus: mapped.providerRawStatus,
       })
 
-      return payload.update({
+      const blockedOrder = await payload.update({
         collection: 'orders',
         id: args.order.id,
         data: {
@@ -235,6 +260,17 @@ async function applyPaymentStateToOrder(args: {
           status: 'fulfillment_blocked',
         },
       })
+
+      // Alert only on the transition: redelivered webhooks or replayed status
+      // requests for an order that is already blocked must not spam the inbox.
+      if (args.order.status !== 'fulfillment_blocked') {
+        notifyAdminOfFulfillmentBlocked(payload, {
+          orderId: args.order.id,
+          paymentId: mapped.providerPaymentId,
+        })
+      }
+
+      return blockedOrder
     }
 
     throw error

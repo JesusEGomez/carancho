@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { CheckoutDomainError } from '@/lib/checkout-errors'
+
 const getOrderConfirmation = vi.fn()
 const paymentGet = vi.fn()
 const merchantOrderGet = vi.fn()
@@ -108,6 +110,33 @@ describe('reconcileMercadoPagoOrder', () => {
       status: 'confirmed',
     })
     expect(result?.status).toBe('confirmed')
+  })
+
+  it('alerts the admin when the return flow moves the order into fulfillment_blocked', async () => {
+    getOrderConfirmation.mockResolvedValue(buildOrder())
+    paymentGet.mockResolvedValue(buildPayment())
+    payloadUpdate
+      .mockRejectedValueOnce(new CheckoutDomainError('OUT_OF_STOCK', 'Sin stock', 409))
+      .mockImplementationOnce(async ({ data, id }) => ({ ...buildOrder(), ...data, id }))
+
+    const result = await reconcile()
+
+    expect(result?.status).toBe('fulfillment_blocked')
+    await vi.waitFor(() => expect(notify).toHaveBeenCalledTimes(1))
+    expect(notify.mock.calls[0][0]).toMatchObject({ orderId: 2 })
+  })
+
+  it('does not alert again when the return flow replays an already blocked order', async () => {
+    getOrderConfirmation.mockResolvedValue(buildOrder({ paymentStatus: 'approved', status: 'fulfillment_blocked' }))
+    paymentGet.mockResolvedValue(buildPayment())
+    payloadUpdate
+      .mockRejectedValueOnce(new CheckoutDomainError('OUT_OF_STOCK', 'Sin stock', 409))
+      .mockImplementationOnce(async ({ data, id }) => ({ ...buildOrder(), ...data, id }))
+
+    await reconcile()
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(getAdminNotifier).not.toHaveBeenCalled()
   })
 
   it('tolerates float rounding when comparing the paid amount', async () => {
