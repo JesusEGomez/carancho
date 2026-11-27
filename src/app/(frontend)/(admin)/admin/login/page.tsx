@@ -27,8 +27,8 @@ export default function AdminLoginPage() {
     register,
   } = useForm<LoginFormValues>({
     defaultValues: {
-      email: 'dev@payloadcms.com',
-      password: 'test',
+      email: '',
+      password: '',
     },
     resolver: zodResolver(loginSchema),
   })
