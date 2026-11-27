@@ -9,7 +9,8 @@ describe('API', () => {
   beforeAll(async () => {
     const payloadConfig = await config
     payload = await getPayload({ config: payloadConfig })
-  })
+    // The first connect to an empty database (e.g. in CI) pushes the whole schema.
+  }, 60_000)
 
   it('fetches users', async () => {
     const users = await payload.find({
