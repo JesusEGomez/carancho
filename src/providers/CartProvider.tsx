@@ -1,7 +1,8 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from 'react'
 
+import { useIsHydrated } from '@/hooks/store/useIsHydrated'
 import { applyFreshPrices, getCartTotals, type CartLine, type CartProductSnapshot } from '@/lib/cart'
 import { fetchProductPrices } from '@/services/store/productPricesApi'
 import type { PaymentMethod } from '@/lib/pricing'
@@ -24,6 +25,82 @@ type CartContextValue = {
 }
 
 const CartContext = createContext<CartContextValue | null>(null)
+
+// The cart lives in localStorage, which React reads as an external store.
+const EMPTY_CART: CartLine[] = []
+const cartListeners = new Set<() => void>()
+let cachedRawCart: string | null = null
+let cachedCart: CartLine[] = EMPTY_CART
+
+function parseCart(raw: string | null): CartLine[] {
+  if (!raw) {
+    return EMPTY_CART
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? (parsed as CartLine[]) : EMPTY_CART
+  } catch {
+    return EMPTY_CART
+  }
+}
+
+/** Returns a stable reference until the stored cart string changes, as useSyncExternalStore requires. */
+function getCartSnapshot(): CartLine[] {
+  let raw: string | null
+
+  try {
+    raw = window.localStorage.getItem(STORAGE_KEY)
+  } catch {
+    return cachedCart
+  }
+
+  if (raw !== cachedRawCart) {
+    cachedRawCart = raw
+    cachedCart = parseCart(raw)
+  }
+
+  return cachedCart
+}
+
+function getServerCartSnapshot(): CartLine[] {
+  return EMPTY_CART
+}
+
+function subscribeToCart(listener: () => void) {
+  cartListeners.add(listener)
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === null || event.key === STORAGE_KEY) {
+      listener()
+    }
+  }
+
+  window.addEventListener('storage', handleStorage)
+
+  return () => {
+    cartListeners.delete(listener)
+    window.removeEventListener('storage', handleStorage)
+  }
+}
+
+function writeCart(nextItems: CartLine[]) {
+  const raw = JSON.stringify(nextItems)
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, raw)
+  } catch {
+    // Storage unavailable or full: keep the cart in memory for this session.
+  }
+
+  cachedRawCart = raw
+  cachedCart = nextItems
+  cartListeners.forEach((listener) => listener())
+}
+
+function updateCart(updater: (currentItems: CartLine[]) => CartLine[]) {
+  writeCart(updater(getCartSnapshot()))
+}
 
 function clampQuantity(quantity: number, stock: number) {
   if (stock <= 0) {
@@ -117,42 +194,14 @@ function getRemoveItemResult(currentItems: CartLine[], productId: number) {
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { showToast } = useToast()
-  const [items, setItems] = useState<CartLine[]>([])
-  const [hasHydrated, setHasHydrated] = useState(false)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY)
-
-      if (!stored) {
-        return
-      }
-
-      const parsed = JSON.parse(stored) as CartLine[]
-      setItems(Array.isArray(parsed) ? parsed : [])
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY)
-    } finally {
-      setHasHydrated(true)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !hasHydrated) {
-      return
-    }
-
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-  }, [hasHydrated, items])
+  // The server snapshot (empty cart) is used while hydrating, so the first client render matches the server.
+  const items = useSyncExternalStore(subscribeToCart, getCartSnapshot, getServerCartSnapshot)
+  const hasHydrated = useIsHydrated()
 
   const refreshPrices = useCallback(async (productIds: number[]) => {
     try {
       const fresh = await fetchProductPrices(productIds)
-      setItems((current) => applyFreshPrices(current, fresh))
+      updateCart((current) => applyFreshPrices(current, fresh))
     } catch (error) {
       // Display-only refresh: the server prices every order from the database anyway.
       console.warn('Could not refresh cart prices', error)
@@ -162,7 +211,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<CartContextValue>(() => {
     const addItem = (product: CartProductSnapshot, quantity = 1) => {
       const result = getAddItemResult(items, product, quantity)
-      setItems(result.nextItems)
+      writeCart(result.nextItems)
 
       if (result.toast) {
         showToast(result.toast.message, result.toast.tone)
@@ -171,7 +220,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     const setQuantity = (productId: number, quantity: number) => {
       const result = getSetQuantityResult(items, productId, quantity)
-      setItems(result.nextItems)
+      writeCart(result.nextItems)
 
       if (result.toast) {
         showToast(result.toast.message, result.toast.tone)
@@ -180,7 +229,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     const removeItem = (productId: number) => {
       const result = getRemoveItemResult(items, productId)
-      setItems(result.nextItems)
+      writeCart(result.nextItems)
 
       if (result.toast) {
         showToast(result.toast.message, result.toast.tone)
@@ -188,7 +237,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
 
     const clearCart = (options?: { silent?: boolean }) => {
-      setItems([])
+      writeCart(EMPTY_CART)
 
       if (!options?.silent) {
         showToast('El carrito quedó vacío.', 'info')
