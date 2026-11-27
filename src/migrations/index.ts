@@ -12,6 +12,7 @@ import * as migration_20260516_151500_store_contact_instagram_url from './202605
 import * as migration_20261124_120000_product_payment_prices from './20261124_120000_product_payment_prices';
 import * as migration_20261124_121000_order_payment_method from './20261124_121000_order_payment_method';
 import * as migration_20261124_122000_product_show_in_offers from './20261124_122000_product_show_in_offers';
+import * as migration_20261126_120000_unified_price_installment_plans from './20261126_120000_unified_price_installment_plans';
 
 export const migrations = [
   {
@@ -83,5 +84,10 @@ export const migrations = [
     up: migration_20261124_122000_product_show_in_offers.up,
     down: migration_20261124_122000_product_show_in_offers.down,
     name: '20261124_122000_product_show_in_offers'
+  },
+  {
+    up: migration_20261126_120000_unified_price_installment_plans.up,
+    down: migration_20261126_120000_unified_price_installment_plans.down,
+    name: '20261126_120000_unified_price_installment_plans'
   },
 ];

@@ -3,9 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from 'react'
 
 import { useIsHydrated } from '@/hooks/store/useIsHydrated'
-import { applyFreshPrices, getCartTotals, type CartLine, type CartProductSnapshot } from '@/lib/cart'
+import { applyFreshPrices, getCartTotal, type CartLine, type CartProductSnapshot } from '@/lib/cart'
 import { fetchProductPrices } from '@/services/store/productPricesApi'
-import type { PaymentMethod } from '@/lib/pricing'
 import { useToast } from '@/providers/ToastProvider'
 
 const STORAGE_KEY = 'carancho-store-cart'
@@ -19,9 +18,8 @@ type CartContextValue = {
   refreshPrices: (productIds: number[]) => Promise<void>
   removeItem: (productId: number) => void
   setQuantity: (productId: number, quantity: number) => void
-  /** Cash subtotal. */
+  /** Every payment method charges the same subtotal. */
   subtotal: number
-  totals: Record<PaymentMethod, number>
 }
 
 const CartContext = createContext<CartContextValue | null>(null)
@@ -245,8 +243,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
 
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
-    const totals = getCartTotals(items)
-    const subtotal = totals.cash
+    const subtotal = getCartTotal(items)
 
     return {
       addItem,
@@ -258,7 +255,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeItem,
       setQuantity,
       subtotal,
-      totals,
     }
   }, [hasHydrated, items, refreshPrices, showToast])
 

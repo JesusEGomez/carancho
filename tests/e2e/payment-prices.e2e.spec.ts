@@ -72,21 +72,21 @@ test.afterAll(async () => {
 })
 
 test.describe('Payment method prices - storefront', () => {
-  test('product detail with only the cash price shows no payment method cards', async ({ page }) => {
+  test('product detail without installment plans shows only the base price', async ({ page }) => {
     await page.goto(`${BASE_URL}/productos/${cashOnly.slug}`)
 
     await expect(page.getByRole('heading', { level: 1, name: cashOnly.name })).toBeVisible()
     await expect(page.getByText(money(cashOnly.price)).first()).toBeVisible()
-    await expect(page.getByText('Precio según medio de pago')).toHaveCount(0)
-    await expect(page.getByText('Precio en efectivo')).toHaveCount(0)
+    await expect(page.getByTestId('payment-method-prices')).toHaveCount(0)
+    await expect(page.getByText('Efectivo / Transferencia')).toHaveCount(0)
+    await expect(page.getByText(/cuotas de/)).toHaveCount(0)
     await expect(page.getByText(/Envío gratis/i)).toHaveCount(0)
   })
 
-  test('product detail with transfer and card prices shows one card per method and the discount', async ({ page }) => {
+  test('product detail shows the cash / transfer price, the installment plans and the discount', async ({ page }) => {
     await page.goto(`${BASE_URL}/productos/${multiPrice.slug}`)
 
     await expect(page.getByRole('heading', { level: 1, name: multiPrice.name })).toBeVisible()
-    await expect(page.getByText('Precio en efectivo')).toBeVisible()
     await expect(page.getByText(/Envío gratis/i)).toHaveCount(0)
 
     const expectedDiscount = Math.round(
@@ -95,27 +95,29 @@ test.describe('Payment method prices - storefront', () => {
     await expect(page.getByText(`-${expectedDiscount}%`, { exact: true })).toBeVisible()
     await expect(page.getByText(money(multiPrice.compareAtPrice), { exact: true })).toBeVisible()
 
-    const cards = page.locator('ul').filter({ hasText: 'Efectivo' }).filter({ hasText: 'Tarjeta' }).locator('li')
-    await expect(cards).toHaveCount(3)
-    await expect(cards.nth(0)).toContainText('Efectivo')
-    await expect(cards.nth(0)).toContainText(money(multiPrice.price))
-    await expect(cards.nth(1)).toContainText('Transferencia')
-    await expect(cards.nth(1)).toContainText(money(multiPrice.transferPrice))
-    await expect(cards.nth(2)).toContainText('Tarjeta')
-    await expect(cards.nth(2)).toContainText(money(multiPrice.cardPrice))
+    const prices = page.getByTestId('payment-method-prices')
+    await expect(prices).toContainText('Efectivo / Transferencia')
+    await expect(prices).toContainText(money(multiPrice.price))
+    await expect(prices).not.toContainText('Tarjeta')
 
-    await screenshot(page, 'product-detail-price-cards')
+    const plans = page.getByTestId('installment-plans').locator('li')
+    await expect(plans).toHaveCount(2)
+    await expect(plans.nth(0)).toHaveText(`3 cuotas de ${money(4000)}`)
+    await expect(plans.nth(1)).toHaveText(`6 cuotas de ${money(2200)}`)
+
+    await screenshot(page, 'product-detail-installments')
   })
 
-  test('catalog card shows the card price only when the product has one', async ({ page }) => {
+  test('catalog cards show only the base price', async ({ page }) => {
     await page.goto(`${BASE_URL}/productos?q=E2E`)
 
     const multiCard = page.locator(`a[href="/productos/${multiPrice.slug}"]`).filter({ hasText: multiPrice.name })
-    await expect(multiCard).toContainText(`${money(multiPrice.cardPrice)} con tarjeta`)
+    await expect(multiCard).toContainText(money(multiPrice.price))
+    await expect(multiCard).not.toContainText('con tarjeta')
+    await expect(multiCard).not.toContainText('cuotas')
 
     const cashCard = page.locator(`a[href="/productos/${cashOnly.slug}"]`).filter({ hasText: cashOnly.name })
     await expect(cashCard).toContainText(money(cashOnly.price))
-    await expect(cashCard).not.toContainText('con tarjeta')
   })
 
   test('home shows the offers carousel under the categories when a product is in offers', async ({ page }) => {
@@ -165,7 +167,7 @@ test.describe('Payment method prices - storefront', () => {
 })
 
 test.describe('Payment method prices - checkout', () => {
-  test('shows per-option totals and stores the transfer method and total on WhatsApp orders', async ({
+  test('shows the base total for every option and stores the transfer method on WhatsApp orders', async ({
     context,
     page,
   }) => {
@@ -180,9 +182,9 @@ test.describe('Payment method prices - checkout', () => {
       .toContain(`"quantity":${quantity}`)
 
     await page.goto(`${BASE_URL}/checkout`)
-    await expect(page.getByTestId('checkout-total-card')).toHaveText(money(multiPrice.cardPrice * quantity))
-    await expect(page.getByTestId('checkout-total-cash')).toHaveText(money(multiPrice.price * quantity))
-    await expect(page.getByTestId('checkout-total-transfer')).toHaveText(money(multiPrice.transferPrice * quantity))
+    await expect(page.getByTestId('checkout-total-mercadopago')).toHaveText(money(multiPrice.price * quantity))
+    await expect(page.getByTestId('checkout-total-whatsapp')).toHaveText(money(multiPrice.price * quantity))
+    await expect(page.getByText(/cuotas de/)).toHaveCount(0)
 
     await page.locator('#customerName').fill(customer.customerName)
     await page.locator('#customerEmail').fill(customer.customerEmail)
@@ -209,7 +211,8 @@ test.describe('Payment method prices - checkout', () => {
     expect(order.paymentMethod).toBe('transfer')
     expect(order.paymentProvider).toBe('whatsapp')
     expect(order.status).toBe('pending_whatsapp')
-    expect(order.total).toBe(multiPrice.transferPrice * quantity)
+    expect(order.total).toBe(multiPrice.price * quantity)
+    expect(order.items.map((item) => item.unitPrice)).toEqual([multiPrice.price])
   })
 })
 
@@ -234,20 +237,20 @@ test.describe('Payment method prices - admin order actions', () => {
     await adminPage?.context().close()
   })
 
-  test('switches transfer to cash, then finalizes through the confirmation dialog', async ({ request }) => {
+  test('switches transfer to cash without changing the total, then finalizes', async ({ request }) => {
     const orderId = await createWhatsAppOrder(request, 'transfer')
     const page = adminPage
 
     await page.goto(`${BASE_URL}/admin/ordenes/${orderId}`)
     const total = page.getByText('Total', { exact: true }).locator('..')
     await expect(page.getByText('Pendiente por WhatsApp')).toBeVisible()
-    await expect(total).toContainText(money(multiPrice.transferPrice))
+    await expect(total).toContainText(money(multiPrice.price))
 
     await page.getByRole('button', { name: 'Cambiar a Efectivo' }).click()
     await expect(page.getByRole('button', { name: 'Cambiar a Transferencia' })).toBeVisible()
+    await expect.poll(async () => (await getOrder(orderId)).paymentMethod).toBe('cash')
     await expect(total).toContainText(money(multiPrice.price))
-    await expect.poll(async () => (await getOrder(orderId)).total).toBe(multiPrice.price)
-    expect((await getOrder(orderId)).paymentMethod).toBe('cash')
+    expect((await getOrder(orderId)).total).toBe(multiPrice.price)
 
     await page.getByRole('button', { name: 'Dar por finalizada' }).click()
     const dialog = page.getByRole('alertdialog', { name: '¿Finalizar la orden?' })

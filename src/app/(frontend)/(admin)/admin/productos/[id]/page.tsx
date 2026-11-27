@@ -39,7 +39,6 @@ export default function EditProductPage({ params }: Props) {
 
   const initialData: ProductFormData = {
     badges: product.badges ?? [],
-    cardPrice: product.cardPrice ?? '',
     compareAtPrice: product.compareAtPrice ?? '',
     description: product.description,
     featuredImage,
@@ -47,6 +46,10 @@ export default function EditProductPage({ params }: Props) {
     features: features.map((feature) => ({ label: feature.label })),
     gallery,
     id: product.id,
+    installmentPlans: (product.installmentPlans ?? []).map((plan) => ({
+      installmentAmount: plan.installmentAmount,
+      installments: plan.installments,
+    })),
     isFeatured: product.isFeatured,
     name: product.name,
     parentCategoryId: parentCategoryId ?? 0,
@@ -59,7 +62,6 @@ export default function EditProductPage({ params }: Props) {
     status: product.status,
     stock: product.stock,
     subcategoryId,
-    transferPrice: product.transferPrice ?? '',
   }
 
   return <ProductForm initialData={initialData} key={product.id} />

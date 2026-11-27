@@ -1,44 +1,20 @@
 import { formatCurrency } from '@/lib/formatCurrency'
-import { getConfiguredPaymentPrices, PAYMENT_METHOD_LABELS, type PaymentMethod, type PricedProduct } from '@/lib/pricing'
+import { BASE_PRICE_LABEL, getInstallmentPlans, type InstallmentPlan } from '@/lib/pricing'
 
-function PaymentMethodIcon({ method }: { method: PaymentMethod }) {
-  const common = {
-    'aria-hidden': true,
-    className: 'h-5 w-5',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    strokeWidth: 2,
-    viewBox: '0 0 24 24',
-  }
+const iconProps = {
+  'aria-hidden': true,
+  className: 'h-5 w-5',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  strokeWidth: 2,
+  viewBox: '0 0 24 24',
+}
 
-  if (method === 'card') {
-    return (
-      <svg {...common}>
-        <rect height="14" rx="2" width="20" x="2" y="5" />
-        <path d="M2 10h20" />
-        <path d="M6 15h4" />
-      </svg>
-    )
-  }
-
-  if (method === 'transfer') {
-    return (
-      <svg {...common}>
-        <path d="M3 10h18" />
-        <path d="M5 10v8" />
-        <path d="M10 10v8" />
-        <path d="M14 10v8" />
-        <path d="M19 10v8" />
-        <path d="M3 21h18" />
-        <path d="M12 3 3 8h18z" />
-      </svg>
-    )
-  }
-
+function CashIcon() {
   return (
-    <svg {...common}>
+    <svg {...iconProps}>
       <rect height="12" rx="2" width="20" x="2" y="6" />
       <circle cx="12" cy="12" r="2.5" />
       <path d="M6 12h.01" />
@@ -47,46 +23,63 @@ function PaymentMethodIcon({ method }: { method: PaymentMethod }) {
   )
 }
 
-/** Renders one card per configured payment price; renders nothing when only the cash price exists. */
-export function PaymentMethodPrices({ product }: { product: PricedProduct }) {
-  const prices = getConfiguredPaymentPrices(product)
+function CardIcon() {
+  return (
+    <svg {...iconProps}>
+      <rect height="14" rx="2" width="20" x="2" y="5" />
+      <path d="M2 10h20" />
+      <path d="M6 15h4" />
+    </svg>
+  )
+}
 
-  if (prices.length === 0) {
+type PaymentMethodPricesProps = {
+  product: {
+    installmentPlans?: Partial<InstallmentPlan>[] | null
+    price: number
+  }
+}
+
+/**
+ * Highlights the cash / transfer price and lists the informational installment plans.
+ * Renders nothing when the product has no installment plans, since the base price is already shown.
+ */
+export function PaymentMethodPrices({ product }: PaymentMethodPricesProps) {
+  const plans = getInstallmentPlans(product.installmentPlans)
+
+  if (plans.length === 0) {
     return null
   }
 
-  // From sm up three cards share one row, so each stacks its icon above the text to fit long labels.
-  const isCompact = prices.length === 3
-
   return (
-    <div className="mt-5">
-      <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Precio según medio de pago</p>
-      <ul className={`mt-3 grid gap-3 ${isCompact ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-        {prices.map(({ method, price }) => (
-          <li
-            className={`flex min-w-0 gap-3 rounded-[18px] border p-4 ${
-              isCompact ? 'items-center sm:flex-col sm:items-start' : 'items-center'
-            } ${
-              method === 'cash' ? 'border-brand-orange bg-orange-50' : 'border-slate-200 bg-white'
-            }`}
-            key={method}
-          >
-            <span
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                method === 'cash' ? 'bg-brand-orange text-white' : 'bg-slate-100 text-brand-ink'
-              }`}
-            >
-              <PaymentMethodIcon method={method} />
-            </span>
-            <span className="min-w-0">
-              <span className="block break-words text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
-                {PAYMENT_METHOD_LABELS[method]}
-              </span>
-              <span className="block text-lg font-black text-brand-ink">{formatCurrency(price)}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+    <div className="mt-5" data-testid="payment-method-prices">
+      <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Medios de pago</p>
+      <div className="mt-3 flex min-w-0 items-center gap-3 rounded-[18px] border border-brand-orange bg-orange-50 p-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-orange text-white">
+          <CashIcon />
+        </span>
+        <span className="min-w-0">
+          <span className="block break-words text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
+            {BASE_PRICE_LABEL}
+          </span>
+          <span className="block text-lg font-black text-brand-ink">{formatCurrency(product.price)}</span>
+        </span>
+      </div>
+      <div className="mt-3 rounded-[18px] border border-slate-200 bg-white p-4">
+        <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
+          <span className="text-brand-ink">
+            <CardIcon />
+          </span>
+          Cuotas
+        </p>
+        <ul className="mt-3 space-y-2" data-testid="installment-plans">
+          {plans.map((plan) => (
+            <li className="text-sm font-bold text-brand-ink" key={plan.installments}>
+              {plan.installments} cuotas de {formatCurrency(plan.installmentAmount)}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }

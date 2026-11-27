@@ -280,7 +280,7 @@ async function applyPaymentStateToOrder(args: {
 export async function createMercadoPagoCheckout(input: CreateOrderRequest) {
   const payload = await getPayloadClient()
   const env = getMercadoPagoEnv()
-  // Mercado Pago always charges the card price.
+  // Mercado Pago charges the base price; 'card' only records how the order was paid.
   const orderData = await buildValidatedOrderData(input, 'card')
   const externalReference = createExternalReference()
 
